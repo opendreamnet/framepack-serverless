@@ -1,6 +1,7 @@
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import torch
+import torch.nn.functional as F
 import einops
 import torch.nn as nn
 import numpy as np
@@ -31,6 +32,9 @@ if torch.backends.cuda.cudnn_sdp_enabled():
 
 print("Currently enabled native sdp backends:", enabled_backends)
 
+major, minor = torch.cuda.get_device_capability()
+print(f"CUDA Capability: {major}.{minor}")
+
 try:
     # raise NotImplementedError
     from xformers.ops import memory_efficient_attention as xformers_attn_func
@@ -48,6 +52,16 @@ except:
     flash_attn_varlen_func = None
     flash_attn_func = None
 
+try:
+    # raise NotImplementedError
+    from flash_attn.flash_attn_interface import flash_attn_unpadded_func
+    from flash_attn.flash_attn_triton import flash_attn_func
+    print('Flash Attn 1 is installed!')
+except:
+    print('Flash Attn 1 is not installed!')
+    flash_attn_unpadded_func = None
+    flash_attn_func = None
+    
 try:
     # raise NotImplementedError
     from sageattention import sageattn_varlen, sageattn
@@ -104,36 +118,81 @@ def apply_rotary_emb_transposed(x, freqs_cis):
     out = out.to(x)
     return out
 
+def attn_varlen_func(q_o, k_o, v_o, cu_seqlens_q, cu_seqlens_kv, max_seqlen_q, max_seqlen_kv):
+    with torch.no_grad():
+        q = q_o
+        k = k_o
+        v = v_o
+        
+        # This device probably does not have support for bfloat16.
+        if torch.cuda.get_device_properties().major < 8:
+            q = q_o.to(torch.float16)
+            k = k_o.to(torch.float16)
+            v = v_o.to(torch.float16)
+            
+        def process_chunk(q_chunk, k_chunk, v_chunk):
+            out = F.scaled_dot_product_attention(q_chunk.transpose(1,2), 
+                                                k_chunk.transpose(1,2), 
+                                                v_chunk.transpose(1,2)).transpose(1,2)
+            return out
+            
+        if cu_seqlens_q is None and cu_seqlens_kv is None and max_seqlen_q is None and max_seqlen_kv is None:
+            if sageattn is not None:
+                try:
+                    return sageattn(q, k, v, tensor_layout='NHD').to(q_o.dtype)
+                except Exception as e:
+                    print(f"SageAttention Error: {e}. Continuing with fallback.")
+        
+            if flash_attn_func is not None:
+                try:
+                    return flash_attn_func(q, k, v).to(q_o.dtype)
+                except Exception as e:
+                    print(f"FlashAttention Error: {e}. Continuing with fallback.")
+        
+            if xformers_attn_func is not None:
+                try:
+                    return xformers_attn_func(q, k, v).to(q_o.dtype)
+                except Exception as e:
+                    print(f"xFormers Error: {e}. Continuing with fallback.")
+                    
+            return process_chunk(q, k, v).to(q_o.dtype)
+        
+        batch_size = q.shape[0]
+        q = q.view(q.shape[0] * q.shape[1], *q.shape[2:])
+        k = k.view(k.shape[0] * k.shape[1], *k.shape[2:])
+        v = v.view(v.shape[0] * v.shape[1], *v.shape[2:])
+        
+        if sageattn_varlen is not None:
+            try:
+                x = sageattn_varlen(q, k, v, cu_seqlens_q, cu_seqlens_kv, max_seqlen_q, max_seqlen_kv)
+                return x.view(batch_size, max_seqlen_q, *x.shape[2:]).to(q_o.dtype)
+            except Exception as e:
+                print(f"SageAttention Error: {e}. Continuing with fallback.")
 
-def attn_varlen_func(q, k, v, cu_seqlens_q, cu_seqlens_kv, max_seqlen_q, max_seqlen_kv):
-    if cu_seqlens_q is None and cu_seqlens_kv is None and max_seqlen_q is None and max_seqlen_kv is None:
-        if sageattn is not None:
-            x = sageattn(q, k, v, tensor_layout='NHD')
-            return x
-
-        if flash_attn_func is not None:
-            x = flash_attn_func(q, k, v)
-            return x
+        if flash_attn_varlen_func is not None:
+            try:
+                x = flash_attn_varlen_func(q, k, v, cu_seqlens_q, cu_seqlens_kv, max_seqlen_q, max_seqlen_kv)
+                return x.view(batch_size, max_seqlen_q, *x.shape[2:]).to(q_o.dtype)
+            except Exception as e:
+                print(f"FlashAttention Error: {e}. Continuing with fallback.")
+                
+        if flash_attn_unpadded_func is not None:
+            try:
+                x = flash_attn_unpadded_func(q, k, v, cu_seqlens_q, cu_seqlens_kv, max_seqlen_q, max_seqlen_kv, 0.0)
+                return x.view(batch_size, max_seqlen_q, *x.shape[2:]).to(q_o.dtype)
+            except Exception as e:
+                print(f"FlashAttention 1 Error: {e}. Continuing with fallback.")
 
         if xformers_attn_func is not None:
-            x = xformers_attn_func(q, k, v)
-            return x
+            print("Warning: Calling standard xformers attention for variable length sequence. This might be incorrect. Padding/unpadding or a dedicated varlen function might be needed.")
+             
+            try:
+                x = xformers_attn_func(q, k, v)
+                return x.view(batch_size, max_seqlen_q, *x.shape[2:]).to(q_o.dtype)
+            except Exception as e:
+                print(f"xFormers Error: {e}. Continuing with fallback.")
 
-        x = torch.nn.functional.scaled_dot_product_attention(q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2)).transpose(1, 2)
-        return x
-
-    batch_size = q.shape[0]
-    q = q.view(q.shape[0] * q.shape[1], *q.shape[2:])
-    k = k.view(k.shape[0] * k.shape[1], *k.shape[2:])
-    v = v.view(v.shape[0] * v.shape[1], *v.shape[2:])
-    if sageattn_varlen is not None:
-        x = sageattn_varlen(q, k, v, cu_seqlens_q, cu_seqlens_kv, max_seqlen_q, max_seqlen_kv)
-    elif flash_attn_varlen_func is not None:
-        x = flash_attn_varlen_func(q, k, v, cu_seqlens_q, cu_seqlens_kv, max_seqlen_q, max_seqlen_kv)
-    else:
         raise NotImplementedError('No Attn Installed!')
-    x = x.view(batch_size, max_seqlen_q, *x.shape[2:])
-    return x
 
 
 class HunyuanAttnProcessorFlashAttnDouble:
