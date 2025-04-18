@@ -30,9 +30,30 @@ dependencies = [
 sage = [
     "sageattention==1.0.6",
 ]
+#sage2 = [
+#    "sageattention",
+#]
+flash = [
+    "flash-attn>=2.7.4.post1",
+]
 xformers = [
     "xformers>=0.0.29.post3",
 ]
-flashattention = [
-    "flash-attn>=2.7.4.post1",
+
+[tool.uv]
+no-build-isolation-package = [
+    "sageattention",
+    "xformers",
+    "flash-attn",
 ]
+#conflicts = [
+#    [
+#      { extra = "sage" },
+#      { extra = "sage2" },
+#    ],
+#]
+
+[tool.uv.sources]
+#sageattention = [
+#    { git = "https://github.com/thu-ml/SageAttention", extra = "sage2" },
+#]

@@ -335,7 +335,7 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
-flashattention = [
+flash = [
     { name = "flash-attn" },
 ]
 sage = [
@@ -351,7 +351,7 @@ requires-dist = [
     { name = "av", specifier = "==12.1.0" },
     { name = "diffusers", specifier = "==0.33.1" },
     { name = "einops", specifier = ">=0.8.1" },
-    { name = "flash-attn", marker = "extra == 'flashattention'", specifier = ">=2.7.4.post1" },
+    { name = "flash-attn", marker = "extra == 'flash'", specifier = ">=2.7.4.post1" },
     { name = "gradio", specifier = "==5.23.0" },
     { name = "numpy", specifier = "==1.26.2" },
     { name = "opencv-contrib-python", specifier = ">=4.11.0.86" },
@@ -369,7 +369,7 @@ requires-dist = [
     { name = "transformers", specifier = "==4.46.2" },
     { name = "xformers", marker = "extra == 'xformers'", specifier = ">=0.0.29.post3" },
 ]
-provides-extras = ["sage", "xformers", "flashattention"]
+provides-extras = ["sage", "flash", "xformers"]
 
 [[package]]
 name = "fsspec"
