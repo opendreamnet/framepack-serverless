@@ -1,0 +1,18 @@
+name: framepack_devcontainer
+
+volumes:
+  cache_data: null
+
+services:
+  ubuntu:
+    image: nvidia/cuda:12.6.0-cudnn-devel-ubuntu24.04
+    volumes:
+      - ..:/workspace
+      - cache_data:/home/ubuntu/.cache
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
