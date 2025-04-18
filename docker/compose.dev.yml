@@ -1,0 +1,30 @@
+volumes:
+  cache_data: null
+
+services:
+  framepack:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile
+    volumes:
+      - cache_data:/root/.cache
+    ports:
+      - 7861:7860
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "1"
+        max-size: "200k"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:7860 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
