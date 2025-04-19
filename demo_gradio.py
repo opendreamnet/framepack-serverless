@@ -26,12 +26,10 @@ from diffusers_helper.gradio.progress_bar import make_progress_bar_css, make_pro
 from transformers import SiglipImageProcessor, SiglipVisionModel
 from diffusers_helper.clip_vision import hf_clip_vision_encode
 from diffusers_helper.bucket_tools import find_nearest_bucket
-from utils.args import args
+from utils.args import _get_args
 
 # for win desktop probably use --server 127.0.0.1 --inbrowser
 # For linux server probably use --server 127.0.0.1 or do not use any cmd flags
-
-print(args)
 
 free_mem_gb = get_cuda_free_memory_gb(gpu)
 high_vram = free_mem_gb > 60
@@ -388,10 +386,12 @@ with block:
     start_button.click(fn=process, inputs=ips, outputs=[result_video, preview_image, progress_desc, progress_bar, start_button, end_button])
     end_button.click(fn=end_process)
 
-
-block.launch(
-    server_name=args.server,
-    server_port=args.port,
-    share=args.share,
-    inbrowser=args.inbrowser,
-)
+if __name__ == '__main__':
+    args = _get_args()
+    
+    block.launch(
+        server_name=args.server,
+        server_port=args.port,
+        share=args.share,
+        inbrowser=args.inbrowser,
+    )

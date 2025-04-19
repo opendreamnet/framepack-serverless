@@ -17,7 +17,7 @@ from diffusers.models.modeling_outputs import Transformer2DModelOutput
 from diffusers.models.modeling_utils import ModelMixin
 from diffusers_helper.dit_common import LayerNorm
 from diffusers_helper.utils import zero_module
-from utils.args import args, target_precision
+from utils import args
 
 
 enabled_backends = []
@@ -126,10 +126,10 @@ def attn_varlen_func(q_o, k_o, v_o, cu_seqlens_q, cu_seqlens_kv, max_seqlen_q, m
         v = v_o
         
         # This device probably does not have support for bfloat16.
-        if q_o.dtype != target_precision:
-            q = q_o.to(target_precision)
-            k = k_o.to(target_precision)
-            v = v_o.to(target_precision)
+        if q_o.dtype != args.target_precision:
+            q = q_o.to(args.target_precision)
+            k = k_o.to(args.target_precision)
+            v = v_o.to(args.target_precision)
             
         def process_chunk(q_chunk, k_chunk, v_chunk):
             out = F.scaled_dot_product_attention(q_chunk.transpose(1,2), 
