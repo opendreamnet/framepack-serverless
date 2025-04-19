@@ -39,6 +39,9 @@ flash = [
 xformers = [
     "xformers>=0.0.29.post3",
 ]
+runpod = [
+    "runpod>=1.7.9",
+]
 
 [tool.uv]
 no-build-isolation-package = [
