@@ -1,5 +1,5 @@
 # syntax = devthefuture/dockerfile-x
-FROM ./docker/dockerfile
+FROM ./Dockerfile
 
 RUN --mount=type=cache,target=/var/cache/uv \
   uv sync --extra sage --extra runpod --frozen --no-editable
