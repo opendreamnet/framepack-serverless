@@ -1,0 +1,22 @@
+volumes:
+  cache_data: null
+
+services:
+  framepack:
+    build:
+      context: ../
+      dockerfile: docker/runpod.dockerfile
+    volumes:
+      - cache_data:/root/.cache
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "1"
+        max-size: "200k"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
