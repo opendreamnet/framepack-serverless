@@ -5,7 +5,7 @@ services:
   framepack:
     build:
       context: ../
-      dockerfile: docker/runpod.dockerfile
+      dockerfile: runpod.dockerfile
     volumes:
       - cache_data:/root/.cache
     logging:
