@@ -1,4 +1,5 @@
 import runpod
+import os
 from demo_gradio import worker, stream
 from diffusers_helper.thread_utils import async_run
 from utils.image import image_to_numpy
@@ -19,7 +20,7 @@ def handler(job):
         flag, data = stream.output_queue.next()
 
         if flag == 'file':
-            output_url = upload_video(job["id"], data)
+            output_url = upload_video(job["id"], data, bucket_name=os.environ.get("BUCKET_NAME", None))
             yield output_url
             
         if flag == 'end':
