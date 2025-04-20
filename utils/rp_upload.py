@@ -7,6 +7,7 @@ from typing import Optional, Tuple
 from boto3.s3.transfer import TransferConfig
 from botocore.config import Config
 from runpod.serverless.utils.rp_upload import extract_region_from_url
+from utils.crypto import encrypt
 
 def get_boto_client(
     bucket_creds: Optional[dict] = None,
@@ -94,20 +95,24 @@ def upload_test_file():
 def upload_video(
     job_id,
     file_location,
-    result_index=0,
-    results_list=None,
+    encrypt_file=False,
 ):  # pylint: disable=line-too-long # pragma: no cover
     """
     Upload a single file to bucket storage.
     """
     bucket_name = os.environ.get("BUCKET_NAME", None)
-    file_name = str(uuid.uuid4())[:8]
+    file_name = os.path.splitext(os.path.basename(file_location))[0]
     boto_client, _ = get_boto_client()
     file_extension = os.path.splitext(file_location)[1]
     content_type = "video/" + file_extension.lstrip(".")
-
+    
     with open(file_location, "rb") as input_file:
         output = input_file.read()
+    
+    if encrypt_file:
+        content_type = "application/x-encrypted"
+        file_extension = f"{file_extension}.enc"
+        output = encrypt(output)
 
     if boto_client is None:
         # Save the output to a file
@@ -118,9 +123,6 @@ def upload_video(
 
         with open(sim_upload_location, "wb") as file_output:
             file_output.write(output)
-
-        if results_list is not None:
-            results_list[result_index] = sim_upload_location
 
         return sim_upload_location
 
@@ -137,8 +139,5 @@ def upload_video(
         Params={"Bucket": f"{bucket}", "Key": f"{job_id}/{file_name}{file_extension}"},
         ExpiresIn=604800,
     )
-
-    if results_list is not None:
-        results_list[result_index] = presigned_url
 
     return presigned_url

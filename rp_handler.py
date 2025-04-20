@@ -6,6 +6,7 @@ from utils.image import image_to_numpy
 from utils.args import _set_target_precision
 from utils.rp_upload import upload_video, upload_test_file
 from runpod.serverless.utils.rp_cleanup import clean
+from utils.crypto import decrypt
 
 is_interrupted = False
 
@@ -20,8 +21,29 @@ def handler(job):
     
     upload_test_file()
     
-    job_input = job["input"]
-    job_input["input_image"] = image_to_numpy(job_input["input_image"])
+    default_job_input = {
+        "n_prompt": "",
+        "seed": 31337,
+        "total_second_length": 5,
+        "latent_window_size": 9,
+        "steps": 25,
+        "cfg": 1.0,
+        "gs": 10.0,
+        "rs": 0,
+        "gpu_memory_preservation": 6,
+        "use_teacache": False,
+        "encrypted": False,
+    }
+    
+    job_input = {**default_job_input, **job["input"]}
+    
+    encrypted = job_input["encrypted"]
+    del job_input["encrypted"]
+        
+    if encrypted:
+        job_input["prompt"] = decrypt(job_input["prompt"]).decode()
+    
+    job_input["input_image"] = image_to_numpy(job_input["input_image"], encrypted)
 
     output_url = None
     async_run(worker, **job_input)
@@ -33,7 +55,7 @@ def handler(job):
             break
 
         if flag == 'file':
-            output_url = upload_video(job["id"], data)
+            output_url = upload_video(job["id"], data, encrypted)
             yield output_url
             
         if flag == 'end':
