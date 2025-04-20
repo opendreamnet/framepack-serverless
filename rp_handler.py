@@ -1,6 +1,7 @@
 import runpod
 import signal
-from demo_gradio import worker, stream
+import os
+from demo_gradio import worker, stream, outputs_folder
 from diffusers_helper.thread_utils import async_run
 from utils.image import image_to_numpy
 from utils.args import _set_target_precision
@@ -40,8 +41,8 @@ def handler(job):
     encrypted = job_input["encrypted"]
     del job_input["encrypted"]
         
-    if encrypted:
-        job_input["prompt"] = decrypt(job_input["prompt"]).decode()
+    #if encrypted:
+    #    job_input["prompt"] = decrypt(job_input["prompt"]).decode()
     
     job_input["input_image"] = image_to_numpy(job_input["input_image"], encrypted)
 
@@ -62,7 +63,8 @@ def handler(job):
             yield output_url
             break
         
-    clean(folder_list=["outputs"])
+    clean(folder_list=[outputs_folder])
+    os.makedirs(outputs_folder, exist_ok=True)
 
 if __name__ == '__main__':
     _set_target_precision()
