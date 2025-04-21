@@ -28,6 +28,7 @@ def handler(job):
         "gs": 10.0,
         "rs": 0,
         "gpu_memory_preservation": 6,
+        "mp4_crf": 16,
         "use_teacache": False,
         "encrypted": False,
     }
