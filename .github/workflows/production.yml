@@ -1,0 +1,27 @@
+name: production
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+
+on:
+  workflow_dispatch:
+  push:
+    paths-ignore:
+      - "*.md"
+      - "pyproject.toml"
+      - "requirements.txt"
+      - "docker/compose.dev.yml"
+    branches: [master, main]
+
+jobs:
+  # Call the workflow to build the project
+  build:
+    uses: ./.github/workflows/build.yml
+    secrets: inherit
+    with:
+      working-directory: .
+      docker-file: docker/Dockerfile
+      docker-image-name: ghcr.io/opendreamnet/framepack
+      docker-image-tag: production
+      

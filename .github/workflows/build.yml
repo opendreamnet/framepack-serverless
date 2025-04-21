@@ -1,0 +1,118 @@
+on:
+  workflow_call:
+    inputs:
+      docker-push:
+        type: boolean
+        default: true
+      docker-image-name:
+        type: string
+        required: false
+        default: ghcr.io/${{ github.repository }}
+      docker-image-tag:
+        type: string
+        required: false
+        default: development
+      docker-file:
+        type: string
+        required: true
+      docker-platforms:
+        type: string
+        required: false
+        default: linux/amd64
+      docker-build-args:
+        type: string
+        required: false
+      docker-no-cache:
+        type: boolean
+        default: false
+      docker-cache-mode:
+        type: string
+        default: max
+      working-directory:
+        type: string
+        required: true
+      deploy-url:
+        type: string
+        required: false
+      runs-on:
+        type: string
+        default: ubuntu-latest
+
+jobs:
+  build:
+    name: build
+    runs-on: ${{ inputs.runs-on }}
+
+    env:
+      GIT_SHA: ${{ github.sha }}
+      CF_ACCESS_CLIENT_ID: null
+      CF_ACCESS_CLIENT_SECRET: null
+
+    steps:
+      - name: 💻 Set Environment Variables
+        run: |
+          echo "DOCKER_IMAGE_BUILD_DATE=$(date +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
+          echo "GIT_SHA=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_ENV
+
+      - name: 📁 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🔒 Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        if: ${{ inputs.docker-push == true }}
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🔑 Load 1Password Secrets
+        uses: 1password/load-secrets-action@v2
+        with:
+          export-env: true
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          CF_ACCESS_CLIENT_ID: "op://xen65q6xejmrcafvgdfso4lyu4/Cloudflare Access Token/Nombre de usuario"
+          CF_ACCESS_CLIENT_SECRET: "op://xen65q6xejmrcafvgdfso4lyu4/Cloudflare Access Token/credencial"
+
+      - name: ⚙️ Setup QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: 🐬 Setup Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🏗️ Build and push
+        uses: docker/build-push-action@v6
+        with:
+          push: ${{ inputs.docker-push }}
+          file: ${{ inputs.docker-file }}
+          context: ${{ inputs.working-directory }}
+          platforms: ${{ inputs.docker-platforms }}
+          build-args: |
+            GIT_SHA=${{ github.sha }}
+            ${{ inputs.docker-build-args }}
+          labels: |
+            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
+            org.opencontainers.image.authors=${{ github.repository_owner }}
+            org.opencontainers.image.source=${{ github.repositoryUrl }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.description=Created from commit ${{ github.sha }} and ref ${{ github.ref_name }}
+            org.opendreamnet.ci.runner-os=${{ runner.os }}
+            org.opendreamnet.ci.runner-name=${{ runner.name }}
+            org.opendreamnet.ci.runner-arch=${{ runner.arch }}
+          tags: |
+            ${{ inputs.docker-image-name }}:latest
+            ${{ inputs.docker-image-name }}:${{ inputs.docker-image-tag }}
+            ${{ inputs.docker-image-name }}:${{ env.GIT_SHA }}
+          no-cache: ${{ inputs.docker-no-cache }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=${{ inputs.docker-cache-mode }}
+
+      - name: 🎇 Deploy
+        uses: fjogeleit/http-request-action@v1
+        if: ${{ inputs.deploy-url != '' && inputs.deploy-url != null }}
+        continue-on-error: true
+        with:
+          url: ${{ inputs.deploy-url }}
+          method: POST
+          customHeaders: '{ "CF-Access-Client-Id": "${{ env.CF_ACCESS_CLIENT_ID }}", "CF-Access-Client-Secret": "${{ env.CF_ACCESS_CLIENT_SECRET }}" }'
+          timeout: 60000
