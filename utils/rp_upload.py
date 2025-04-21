@@ -42,7 +42,7 @@ def get_boto_client(
         endpoint_url = os.environ.get("BUCKET_ENDPOINT_URL", None)
         access_key_id = os.environ.get("BUCKET_ACCESS_KEY_ID", None)
         secret_access_key = os.environ.get("BUCKET_SECRET_ACCESS_KEY", None)
-        region = os.environ.get("BUCKET_REGION", extract_region_from_url(endpoint_url))
+        region = os.environ.get("BUCKET_REGION", extract_region_from_url(endpoint_url) if endpoint_url != None else None)
 
     if endpoint_url and access_key_id and secret_access_key:
         boto_client = bucket_session.client(
