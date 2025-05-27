@@ -161,16 +161,17 @@ def attn_varlen_func(q_o, k_o, v_o, cu_seqlens_q, cu_seqlens_kv, max_seqlen_q, m
 
             return process_chunk(q, k, v).to(q_o.dtype)
 
-        batch_size = q.shape[0]
-        q = q.view(q.shape[0] * q.shape[1], *q.shape[2:])
-        k = k.view(k.shape[0] * k.shape[1], *k.shape[2:])
-        v = v.view(v.shape[0] * v.shape[1], *v.shape[2:])
+        B, L, H, C = q.shape
+
+        q = q.flatten(0, 1)
+        k = k.flatten(0, 1)
+        v = v.flatten(0, 1)
 
         if sageattn_varlen is not None:
             try:
                 x = sageattn_varlen(q, k, v, cu_seqlens_q,
                                     cu_seqlens_kv, max_seqlen_q, max_seqlen_kv)
-                return x.view(batch_size, max_seqlen_q, *x.shape[2:]).to(q_o.dtype)
+                return x.unflatten(0, (B, L))
             except Exception as e:
                 print(f"SageAttention Error: {e}. Continuing with fallback.")
 
@@ -178,7 +179,7 @@ def attn_varlen_func(q_o, k_o, v_o, cu_seqlens_q, cu_seqlens_kv, max_seqlen_q, m
             try:
                 x = flash_attn_varlen_func(
                     q, k, v, cu_seqlens_q, cu_seqlens_kv, max_seqlen_q, max_seqlen_kv)
-                return x.view(batch_size, max_seqlen_q, *x.shape[2:]).to(q_o.dtype)
+                return x.unflatten(0, (B, L))
             except Exception as e:
                 print(f"FlashAttention Error: {e}. Continuing with fallback.")
 
@@ -186,7 +187,7 @@ def attn_varlen_func(q_o, k_o, v_o, cu_seqlens_q, cu_seqlens_kv, max_seqlen_q, m
             try:
                 x = flash_attn_unpadded_func(
                     q, k, v, cu_seqlens_q, cu_seqlens_kv, max_seqlen_q, max_seqlen_kv, 0.0)
-                return x.view(batch_size, max_seqlen_q, *x.shape[2:]).to(q_o.dtype)
+                return x.unflatten(0, (B, L))
             except Exception as e:
                 print(
                     f"FlashAttention 1 Error: {e}. Continuing with fallback.")
@@ -196,7 +197,7 @@ def attn_varlen_func(q_o, k_o, v_o, cu_seqlens_q, cu_seqlens_kv, max_seqlen_q, m
 
             try:
                 x = xformers_attn_func(q, k, v)
-                return x.view(batch_size, max_seqlen_q, *x.shape[2:]).to(q_o.dtype)
+                return x.unflatten(0, (B, L))
             except Exception as e:
                 print(f"xFormers Error: {e}. Continuing with fallback.")
 
