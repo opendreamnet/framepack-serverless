@@ -18,9 +18,9 @@ apt-get install -y \
 # Python UV
 #
 export UV_INSTALL_DIR="/usr/local/bin"
-curl -LsSf https://astral.sh/uv/0.6.14/install.sh | sh
+curl -LsSf https://astral.sh/uv/0.6.17/install.sh | sh
 
 #
 # Permissions
 #
-chown -R 1000:1000 /home/ubuntu/.cache
+chown -R 1000:1000 /cache-volume

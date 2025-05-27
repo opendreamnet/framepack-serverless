@@ -1,7 +1,4 @@
 #
 # Python
 #
-
-uv python install 3.10
-uv venv
-uv sync
+uv venv && uv sync --extra sage --extra runpod

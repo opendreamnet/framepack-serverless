@@ -6,9 +6,12 @@ volumes:
 services:
   ubuntu:
     image: nvidia/cuda:12.6.0-cudnn-devel-ubuntu24.04
+    environment:
+      - HF_HOME=/cache-volume
+      - UV_CACHE_DIR=/cache-volume/uv
     volumes:
       - ..:/workspace
-      - cache_data:/home/ubuntu/.cache
+      - cache_data:/cache-volume
     deploy:
       resources:
         reservations:
