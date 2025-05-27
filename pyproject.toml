@@ -3,18 +3,18 @@ name = "framepack"
 version = "0.1.0"
 description = ""
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = "~=3.10"
 
 dependencies = [
     "accelerate==1.6.0",
     "av==12.1.0",
     "diffusers==0.33.1",
     "einops>=0.8.1",
-    "gradio==5.23.0",
+    "gradio>=5.23.0",
     "numpy==1.26.2",
     "opencv-contrib-python>=4.11.0.86",
     "pillow==11.1.0",
-    "requests==2.31.0",
+    "requests>=2.32.3",
     "safetensors>=0.5.3",
     "scipy==1.12.0",
     "sentencepiece==0.2.0",
@@ -49,6 +49,7 @@ no-build-isolation-package = [
     "xformers",
     "flash-attn",
 ]
+
 #conflicts = [
 #    [
 #      { extra = "sage" },

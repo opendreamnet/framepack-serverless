@@ -7,7 +7,7 @@ services:
       context: ../
       dockerfile: runpod.dockerfile
     volumes:
-      - cache_data:/root/.cache
+      - cache_data:/cache-volume
     logging:
       driver: "json-file"
       options:

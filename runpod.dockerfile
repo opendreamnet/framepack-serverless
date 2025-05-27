@@ -2,6 +2,7 @@
 FROM ./Dockerfile
 
 RUN --mount=type=cache,target=/var/cache/uv \
-  uv sync --extra sage --extra runpod --frozen --no-editable
+  uv sync --extra sage --extra runpod --no-dev
 
+ENTRYPOINT []
 CMD ["uv", "run", "rp_handler.py"]
