@@ -131,7 +131,10 @@ class FlowMatchUniPC:
             t_prev_list = t_prev_list[-order:]
 
             if callback is not None:
-                callback({'x': x, 'i': i, 'denoised': model_prev_list[-1]})
+                callback_result = callback({'x': x, 'i': i, 'denoised': model_prev_list[-1]})
+                if callback_result == 'cancel':
+                    print("Cancellation signal received in sample_unipc, stopping generation")
+                    return model_prev_list[-1]  # Return current denoised result
 
         return model_prev_list[-1]
 

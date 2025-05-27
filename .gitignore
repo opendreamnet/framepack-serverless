@@ -2,7 +2,10 @@ hf_download/
 outputs/
 simulated_uploaded/
 repo/
-
+loras/
+input_files/
+queue.json
+settings.json
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -177,3 +180,5 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+temp/
