@@ -12,7 +12,7 @@ import numpy as np
 import torch
 import datetime
 
-os.environ['HF_HOME'] = os.path.abspath(os.path.realpath(os.path.join(os.path.dirname(__file__), './hf_download')))
+# os.environ['HF_HOME'] = os.path.abspath(os.path.realpath(os.path.join(os.path.dirname(__file__), './hf_download')))
 
 import gradio as gr
 from PIL import Image
@@ -74,23 +74,25 @@ def verify_lora_state(transformer, label=""):
         print(f"[{label}] No LoRA components found in transformer")
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--share', action='store_true')
-parser.add_argument("--server", type=str, default='0.0.0.0')
-parser.add_argument("--port", type=int, required=False)
-parser.add_argument("--inbrowser", action='store_true')
-parser.add_argument("--lora", type=str, default=None, help="Lora path (comma separated for multiple)")
-parser.add_argument("--offline", action='store_true', help="Run in offline mode")
-args = parser.parse_args()
+# parser = argparse.ArgumentParser()
+# parser.add_argument('--share', action='store_true')
+# parser.add_argument("--server", type=str, default='0.0.0.0')
+# parser.add_argument("--port", type=int, required=False)
+# parser.add_argument("--inbrowser", action='store_true')
+# parser.add_argument("--lora", type=str, default=None, help="Lora path (comma separated for multiple)")
+# parser.add_argument("--offline", action='store_true', help="Run in offline mode")
+# args = parser.parse_args()
 
-print(args)
+from utils.args import get_args
 
-if args.offline:
-    print("Offline mode enabled.")
-    os.environ['HF_HUB_OFFLINE'] = '1'
-else:
-    if 'HF_HUB_OFFLINE' in os.environ:
-        del os.environ['HF_HUB_OFFLINE']
+# print(args)
+
+# if args.offline:
+#     print("Offline mode enabled.")
+#     os.environ['HF_HUB_OFFLINE'] = '1'
+# else:
+#     if 'HF_HUB_OFFLINE' in os.environ:
+#         del os.environ['HF_HUB_OFFLINE']
 
 free_mem_gb = get_cuda_free_memory_gb(gpu)
 high_vram = free_mem_gb > 60
@@ -135,8 +137,8 @@ text_encoder_2.requires_grad_(False)
 image_encoder.requires_grad_(False)
 
 # Create lora directory if it doesn't exist
-lora_dir = os.path.join(os.path.dirname(__file__), 'loras')
-os.makedirs(lora_dir, exist_ok=True)
+#lora_dir = os.path.join(os.path.dirname(__file__), 'loras')
+#os.makedirs(lora_dir, exist_ok=True)
 
 # Initialize LoRA support - moved scanning after settings load
 lora_names = []
@@ -145,8 +147,8 @@ lora_values = [] # This seems unused for population, might be related to weights
 script_dir = os.path.dirname(os.path.abspath(__file__))
 
 # Define default LoRA folder path relative to the script directory (used if setting is missing)
-default_lora_folder = os.path.join(script_dir, "loras")
-os.makedirs(default_lora_folder, exist_ok=True) # Ensure default exists
+#default_lora_folder = os.path.join(script_dir, "loras")
+#os.makedirs(default_lora_folder, exist_ok=True) # Ensure default exists
 
 if not high_vram:
     # DynamicSwapInstaller is same as huggingface's enable_sequential_offload but 3x faster
@@ -166,7 +168,8 @@ os.makedirs(outputs_folder, exist_ok=True)
 settings = Settings()
 
 # --- Populate LoRA names AFTER settings are loaded ---
-lora_folder_from_settings: str = settings.get("lora_dir", default_lora_folder) # Use setting, fallback to default
+lora_folder_from_settings: str = settings.get("lora_dir") # Use setting, fallback to default
+lora_dir = lora_folder_from_settings
 print(f"Scanning for LoRAs in: {lora_folder_from_settings}")
 if os.path.isdir(lora_folder_from_settings):
     try:
@@ -200,9 +203,9 @@ def load_lora_file(lora_file: str | PurePath):
         lora_name = lora_path.name
         
         # Copy the file to the lora directory
-        lora_dest = PurePath(lora_dir, lora_path)
-        import shutil
-        shutil.copy(lora_file, lora_dest)
+        # lora_dest = PurePath(lora_dir, lora_path)
+        # import shutil
+        # shutil.copy(lora_file, lora_dest)
         
         # Load the LoRA
         global current_generator, lora_names
@@ -294,7 +297,7 @@ def worker(
     lora_loaded_names=[]
 ):
     global high_vram, current_generator, args
-    
+       
     # Ensure any existing LoRAs are unloaded from the current generator
     if current_generator is not None:
         print("Unloading any existing LoRAs before starting new job")
@@ -343,7 +346,7 @@ def worker(
             feature_extractor=feature_extractor,
             high_vram=high_vram,
             prompt_embedding_cache=prompt_embedding_cache,
-            offline=args.offline,
+            offline=False,
             settings=settings
         )
         
@@ -1351,10 +1354,13 @@ interface = create_interface(
     lora_names=lora_names # Explicitly pass the found LoRA names
 )
 
-# Launch the interface
-interface.launch(
-    server_name=args.server,
-    server_port=args.port,
-    share=args.share,
-    inbrowser=args.inbrowser
-)
+if __name__ == '__main__':
+    args = get_args()
+    
+    # Launch the interface
+    interface.launch(
+        server_name=args.server,
+        server_port=args.port,
+        share=args.share,
+        inbrowser=args.inbrowser
+    )

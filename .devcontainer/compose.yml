@@ -9,6 +9,7 @@ services:
     environment:
       - HF_HOME=/cache-volume
       - UV_CACHE_DIR=/cache-volume/uv
+      - FRAMEPACK_HOME=/cache-volume/framepack
     volumes:
       - ..:/workspace
       - cache_data:/cache-volume

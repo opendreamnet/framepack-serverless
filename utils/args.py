@@ -10,18 +10,20 @@ parser.add_argument('--share', action='store_true')
 parser.add_argument("--server", type=str, default='0.0.0.0')
 parser.add_argument("--port", type=int, required=False)
 parser.add_argument("--inbrowser", action='store_true')
+parser.add_argument("--lora", type=str, default=None, help="Lora path (comma separated for multiple)")
+parser.add_argument("--offline", action='store_true', help="Run in offline mode")
 parser.add_argument("--precision", type=str, choices=['auto', 'fp16', 'bf16', 'fp32'], help="Precision to use for model inference", default=default_precision)
 
 target_precision = torch.bfloat16
 
-def _get_args():
+def get_args():
     args = parser.parse_args()
-    _set_target_precision(args.precision)
+    load_precision(args.precision)
     
     print(args)
     return args
 
-def _set_target_precision(precision: str = "auto"):
+def load_precision(precision: str = "auto"):
     global target_precision
     
     if precision == "auto":

@@ -64,6 +64,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     tini \
     libgl1-mesa-dev \
     libglib2.0-0 \
+    libmagic1 \
     && rm -rf /var/lib/apt/lists/* && apt-get clean
 
 # Copy the virtual environment from the builder stage

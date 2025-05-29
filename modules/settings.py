@@ -1,32 +1,36 @@
 import json
+import tempfile
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 import os
 
 class Settings:
     def __init__(self):
-        # Get the project root directory (where settings.py is located)
-        project_root = Path(__file__).parent.parent
+        home_root = os.environ.get(
+            "FRAMEPACK_HOME", 
+            os.path.expanduser("~/.cache/framepack")
+        )
+        home_root = Path(home_root)
+        home_root.mkdir(parents=True, exist_ok=True)
         
-        self.settings_file = project_root / ".framepack" / "settings.json"
-        self.settings_file.parent.mkdir(parents=True, exist_ok=True)
+        self.settings_file = home_root / "settings.json"
         
         # Set default paths relative to project root
         self.default_settings = {
             "save_metadata": True,
             "gpu_memory_preservation": 6,
-            "output_dir": str(project_root / "outputs"),
-            "metadata_dir": str(project_root / "outputs"),
-            "lora_dir": str(project_root / "loras"),
-            "gradio_temp_dir": str(project_root / "temp"),
-            "input_files_dir": str(project_root / "input_files"),  # New setting for input files
+            "output_dir": os.environ.get("FRAMEPACK_OUTPUT_DIR", str(home_root / "outputs")),
+            "metadata_dir": os.environ.get("FRAMEPACK_METADATA_DIR", str(home_root / "metadata")),
+            "lora_dir": os.environ.get("FRAMEPACK_LORAS_DIR", str(home_root / "loras")),
+            "gradio_temp_dir": os.environ.get("GRADIO_TEMP_DIR", tempfile.mkdtemp()),
+            "input_files_dir": os.environ.get("FRAMEPACK_INPUT_DIR", str(home_root / "input_files")),  # New setting for input files
             "auto_save_settings": True,
             "gradio_theme": "base",
             "mp4_crf": 16,
             "clean_up_videos": True,
             "cleanup_temp_folder": False
         }
-        self.settings = self.load_settings()
+        self.load_settings()
 
     def load_settings(self) -> Dict[str, Any]:
         """Load settings from file or return defaults"""
@@ -37,11 +41,21 @@ class Settings:
                     # Merge with defaults to ensure all settings exist
                     settings = self.default_settings.copy()
                     settings.update(loaded_settings)
+                    
+                    self.settings = settings
                     return settings
             except Exception as e:
                 print(f"Error loading settings: {e}")
-                return self.default_settings.copy()
-        return self.default_settings.copy()
+                settings = self.default_settings.copy()
+                self.settings = settings
+                
+                return settings
+            
+        settings = self.default_settings.copy()
+        self.settings = settings
+        self.save_settings()  # Create default settings file if it doesn't exist
+            
+        return settings
 
     def save_settings(self, **kwargs):
         """Save settings to file. Accepts keyword arguments for any settings to update."""

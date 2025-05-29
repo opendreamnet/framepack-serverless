@@ -12,7 +12,8 @@ apt-get update
 # https://askubuntu.com/questions/1060903/importerror-libgthread-2-0-so-0-cannot-open-shared-object-file-no-such-file-o
 apt-get install -y \
   libgl1 \
-  libglib2.0-0
+  libglib2.0-0 \
+  libmagic1
 
 #
 # Python UV
