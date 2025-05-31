@@ -72,6 +72,9 @@ async def handler(job):
         lora_manager.install_model_if_needed(lora)
         lora_name, _ = os.path.splitext(lora.name)
         
+        if lora_name not in lora_names:
+            lora_names.append(lora_name)
+            
         selected_loras.append(lora_name)
         lora_values.append(lora.weight)
     
