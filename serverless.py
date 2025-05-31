@@ -100,7 +100,7 @@ async def handler(job):
     storage_path = f"framepack/{job['id']}"
     
     last_job_status = None  # Track the previous job status to detect status changes
-    last_progress_percentage = -1
+    last_progress_percentage = -99
     current_second = 1
     
     PROGRESS_UPDATE_RATE = 5
@@ -132,15 +132,14 @@ async def handler(job):
             if job.progress_data and 'preview' in job.progress_data:
                 (percentage, message) = get_job_progress(job.progress_data)
                 
-                # The percentage is now lower than the last saved, this happens because we have advanced to the next second of the video.
-                if last_progress_percentage >= 90 and percentage < last_progress_percentage:
-                    current_second += 1
-                    last_progress_percentage = -1
-                
-                if last_progress_percentage != percentage:
-                    logger.info(f"-> {percentage}% - Second: {current_second} - {message}")
+                if last_progress_percentage != percentage and percentage is not None:
+                    # The percentage is now lower than the last saved, this happens because we have advanced to the next second of the video.
+                    if last_progress_percentage >= 90 and percentage < last_progress_percentage:
+                        current_second += 1
+                        last_progress_percentage = -99
                     
                     if ((last_progress_percentage + PROGRESS_UPDATE_RATE) < percentage):
+                        logger.info(f"-> {percentage}% - Second: {current_second} - {message}")
                         last_progress_percentage = percentage
                         preview_b64 = None
                         
