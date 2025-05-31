@@ -139,12 +139,14 @@ async def handler(job):
                         last_progress_percentage = -99
                     
                     if ((last_progress_percentage + PROGRESS_UPDATE_RATE) < percentage):
-                        logger.info(f"-> {percentage}% - Second: {current_second} - {message}")
                         last_progress_percentage = percentage
                         preview_b64 = None
                         
                         prev_percentage = 100 * (current_second - 1)
-                        total_percentage = round((prev_percentage + percentage) / (100 * job_input.config.total_second_length)) * 100
+                        total_percentage = round((prev_percentage + percentage) / job_input.config.total_second_length)
+                        
+                        logger.info(f"-> {percentage}% - Second: {current_second} - {message}")
+                        logger.info(f"-> Prev: {prev_percentage}% - Total: {total_percentage}%")
                         
                         try:
                             preview = job.progress_data.get('preview')
