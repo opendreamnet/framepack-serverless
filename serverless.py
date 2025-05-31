@@ -1,50 +1,22 @@
 from utils.startup import *
 import runpod
-import random
+
 import time
 import re
 import numpy as np
 import os
-from studio import process, job_queue, settings
+from studio import process, job_queue, settings, lora_names
 from utils.image import image_fetch, image_numpy_to_base64
 #from utils.logging import logger
 from utils.args import load_precision
 from utils.uploader import uploader
 from utils.crypto import decrypt, encrypt
 from utils.logging import logger
+from local_types.runpod_job import JobInput
 from typing import Optional, Dict
 from modules.video_queue import JobStatus, Job
-from pydantic import BaseModel, Field
+from modules.lora_manager import lora_manager
 from runpod.serverless.utils.rp_cleanup import clean
-
-class JobInput(BaseModel):
-    # Original, F1
-    model_type: str = "Original"
-    # Positive prompt
-    # Example: "[1s: The person waves hello] [3s: The person jumps up and down] [5s: The person does a dance]"
-    prompt_text: str
-    # Negative prompt
-    n_prompt: str = ""
-    seed: int = Field(default_factory=lambda: random.randint(0, 4294967295))
-    total_second_length: int = 5
-    latent_window_size: int = 9
-    steps: int = 25
-    cfg: float = 1.0
-    gs: float = 10.0
-    rs: int = 0
-    use_teacache: bool = True
-    teacache_num_steps: int = 25
-    teacache_rel_l1_thresh: float = 0.15
-    # Number of sections to blend between prompts
-    blend_sections: int = 4
-    # Used as a starting point if no image is provided
-    latent_type: str = "Black"
-    # Select one or more LoRAs to use for this job
-    selected_loras: list[str] = Field(default_factory=list)
-    resolutionW: int = 640
-    resolutionH: int = 640
-    
-    image_url: str
     
 def upload_result(filepath: Optional[str], storage_path: str):
     file_url = uploader.upload_file(filepath, target_path=storage_path)
@@ -93,15 +65,26 @@ async def handler(job):
     
     job_image = image_fetch(decrypt(job_input.image_url).decode())
     
+    selected_loras: list[str] = []
+    lora_values: list[str] = []
+    
+    for lora in job_input.loras:
+        lora_manager.install_model_if_needed(lora)
+        lora_name, _ = os.path.splitext(lora.name)
+        
+        selected_loras.append(lora_name)
+        lora_values.append(lora.weight)
+    
     job_args = {
-        **job_input.model_dump(),
+        **job_input.config.model_dump(),
         "input_image": np.array(job_image),
         "end_frame_image": None,
         "end_frame_strength": None,
         "clean_up_videos": True,
-        "lora_loaded_names": [],
+        "lora_loaded_names": lora_names,
+        "selected_loras": selected_loras,
+        "lora_values": lora_values,
     }
-    del job_args["image_url"]
     
     response = process(**job_args)
     job_id = response[1]

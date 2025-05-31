@@ -161,8 +161,8 @@ else:
 
 stream = AsyncStream()
 
-outputs_folder = './outputs/'
-os.makedirs(outputs_folder, exist_ok=True)
+#outputs_folder = './outputs/'
+#os.makedirs(outputs_folder, exist_ok=True)
 
 # Initialize settings
 settings = Settings()
@@ -185,7 +185,6 @@ if os.path.isdir(lora_folder_from_settings):
 else:
     print(f"LoRA directory not found: {lora_folder_from_settings}")
 # --- End LoRA population ---
-
 
 # Create job queue
 job_queue = VideoJobQueue()
@@ -1106,8 +1105,15 @@ def process(
         resolutionW,
         resolutionH,
         lora_loaded_names,
-        *lora_values
+        lora_values,
+        *more_lora_values
     ):
+    
+    if more_lora_values:
+        if lora_values:
+            lora_values = list(lora_values) + list(more_lora_values)
+        else:
+            lora_values = list(more_lora_values)
     
     # Create a blank black image if no 
     # Create a default image based on the selected latent_type
