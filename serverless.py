@@ -7,7 +7,6 @@ import numpy as np
 import os
 from studio import process, job_queue, settings, lora_names
 from utils.image import image_fetch, image_numpy_to_base64
-#from utils.logging import logger
 from utils.args import load_precision
 from utils.uploader import uploader
 from utils.crypto import decrypt, encrypt
@@ -32,7 +31,6 @@ def cleanup_outputs():
     
     clean([outputs_path])
     os.makedirs(outputs_path)
-    
     
 
 def get_job_progress(data: Dict):
@@ -62,6 +60,7 @@ async def handler(job):
     """
     # Validate the job input.
     job_input = JobInput.model_validate(job["input"])
+    logger.info(f"Received job: {job_input}")
     
     job_image = image_fetch(decrypt(job_input.image_url).decode())
     
@@ -95,6 +94,8 @@ async def handler(job):
     if not job_id:
         raise Exception("Job ID is none.")
     
+    logger.info(f"Create job id: {job_id}")
+    
     # Location where the outputs will be stored.
     storage_path = f"framepack/{job['id']}"
     
@@ -110,10 +111,12 @@ async def handler(job):
             raise Exception(f"Job not found: {job_id}")
         
         if last_job_status != job.status:
+            logger.info(f"-> {job.status}")
+            
             yield {
                 "name": "update",
                 "payload": {
-                    "status": job.status,
+                    "status": job.status.value,
                     "error": job.error,
                     "result": upload_result(job.result, storage_path) if job.status == JobStatus.COMPLETED else None,
                 }
@@ -127,25 +130,29 @@ async def handler(job):
         elif job.status == JobStatus.RUNNING:
             if job.progress_data and 'preview' in job.progress_data:
                 (percentage, message) = get_job_progress(job.progress_data)
+                logger.info(f"-> {percentage}% - {message}")
                 
                 if last_progress_percentage != percentage:
-                    if (percentage < 100 and (last_progress_percentage + PROGRESS_UPDATE_RATE) > percentage):
-                        return
-            
-                    last_progress_percentage = percentage
-                    
-                    preview = job.progress_data.get('preview')
-                    preview_b64 = None if preview is None else image_numpy_to_base64(preview)
-                    
-                    yield {
-                        "name": "progress",
-                        "payload": {
-                            "percentage": percentage,
-                            "preview": preview_b64,
-                            "description": job.progress_data.get('desc', ''),
-                            "message": message,
-                        },
-                    }
+                    if (percentage == 100 or (last_progress_percentage + PROGRESS_UPDATE_RATE) < percentage):
+                        last_progress_percentage = percentage
+                        
+                        preview_b64 = None
+                        
+                        try:
+                            preview = job.progress_data.get('preview')
+                            preview_b64 = None if preview is None else image_numpy_to_base64(preview)
+                        except Exception as e:
+                            logger.warning(f"Error converting preview to base64: {e}")
+                        
+                        yield {
+                            "name": "progress",
+                            "payload": {
+                                "percentage": percentage,
+                                "preview": preview_b64,
+                                "description": job.progress_data.get('desc', ''),
+                                "message": message,
+                            },
+                        }
                     
 
         elif job.status == JobStatus.COMPLETED:
