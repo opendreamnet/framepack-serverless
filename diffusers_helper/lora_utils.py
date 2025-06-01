@@ -51,7 +51,7 @@ def load_lora(transformer, lora_path: Path, weight_name: Optional[str] = "pytorc
         print(f"Adapter '{adapter_name}' already exists. Removing it before loading again.")
         # Use delete_adapters (plural) instead of delete_adapter
         transformer.delete_adapters([adapter_name])
-    
+        
     start_time = time.perf_counter()
     # Load the adapter with the original name
     transformer.load_lora_adapter(state_dict, network_alphas=None, adapter_name=adapter_name)
@@ -131,3 +131,4 @@ def set_adapters(
     weights = scale_expansion_fn(transformer, weights)
 
     set_weights_and_activate_adapters(transformer, adapter_names, weights)
+    transformer.fuse_lora(lora_scale=1.0, adapter_names=adapter_names)

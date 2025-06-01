@@ -670,6 +670,7 @@ def worker(
 
         # Load LoRAs if selected
         if selected_loras:
+            stream_to_use.output_queue.push(('progress', (None, '', make_progress_bar_html(0, 'Loading LoRAs...'))))
             current_generator.load_loras(selected_loras, lora_folder_from_settings, lora_loaded_names, lora_values)
 
         # --- Callback for progress ---

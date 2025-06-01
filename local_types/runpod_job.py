@@ -32,7 +32,7 @@ class JobInputConfig(BaseModel):
 class JobInputModel(BaseModel):
     name: str
     source: str
-    weight: Optional[float] = 0.5
+    weight: Optional[float] = 1.0
 
 class JobInput(BaseModel):
     image_url: str
