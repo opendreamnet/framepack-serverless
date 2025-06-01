@@ -5,6 +5,7 @@ from diffusers.loaders.lora_conversion_utils import _convert_hunyuan_video_lora_
 from diffusers.utils.peft_utils import set_weights_and_activate_adapters
 from diffusers.loaders.peft import _SET_ADAPTER_SCALE_FN_MAPPING
 import torch
+import time
 
 def load_lora(transformer, lora_path: Path, weight_name: Optional[str] = "pytorch_lora_weights.safetensors"):
     """
@@ -51,9 +52,10 @@ def load_lora(transformer, lora_path: Path, weight_name: Optional[str] = "pytorc
         # Use delete_adapters (plural) instead of delete_adapter
         transformer.delete_adapters([adapter_name])
     
+    start_time = time.perf_counter()
     # Load the adapter with the original name
     transformer.load_lora_adapter(state_dict, network_alphas=None, adapter_name=adapter_name)
-    print(f"LoRA weights '{adapter_name}' loaded successfully.")
+    print(f"LoRA weights '{adapter_name}' loaded successfully: {time.perf_counter() - start_time:.2f}s")
     
     return transformer
 
