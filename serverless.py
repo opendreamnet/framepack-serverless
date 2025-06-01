@@ -101,6 +101,7 @@ async def handler(job):
     
     last_job_status = None  # Track the previous job status to detect status changes
     last_progress_percentage = -99
+    last_progress_message = None
     current_second = 1
     
     PROGRESS_UPDATE_RATE = 5
@@ -132,22 +133,22 @@ async def handler(job):
             if job.progress_data and 'preview' in job.progress_data:
                 (percentage, message) = get_job_progress(job.progress_data)
                 
-                if last_progress_percentage != percentage and percentage is not None:
+                if percentage is not None and (last_progress_percentage != percentage or last_progress_message != message):
                     # The percentage is now lower than the last saved, this happens because we have advanced to the next second of the video.
                     if last_progress_percentage >= 90 and percentage < last_progress_percentage:
                         current_second += 1
                         last_progress_percentage = -99
                     
-                    if ((last_progress_percentage + PROGRESS_UPDATE_RATE) < percentage):
+                    if (last_progress_percentage + PROGRESS_UPDATE_RATE) < percentage or last_progress_message != message:
                         last_progress_percentage = percentage
-                        preview_b64 = None
+                        last_progress_message = message
                         
                         prev_percentage = 100 * (current_second - 1)
                         total_percentage = round((prev_percentage + percentage) / job_input.config.total_second_length)
                         
                         logger.info(f"-> {percentage}% - Second: {current_second} - {message}")
-                        logger.info(f"-> Prev: {prev_percentage}% - Total: {total_percentage}%")
                         
+                        preview_b64 = None
                         try:
                             preview = job.progress_data.get('preview')
                             preview_b64 = None if preview is None else image_numpy_to_base64(preview)
