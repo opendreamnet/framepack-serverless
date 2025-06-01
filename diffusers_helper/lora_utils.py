@@ -6,6 +6,7 @@ from diffusers.utils.peft_utils import set_weights_and_activate_adapters
 from diffusers.loaders.peft import _SET_ADAPTER_SCALE_FN_MAPPING
 import torch
 import time
+import os
 
 def load_lora(transformer, lora_path: Path, weight_name: Optional[str] = "pytorch_lora_weights.safetensors"):
     """
@@ -131,4 +132,7 @@ def set_adapters(
     weights = scale_expansion_fn(transformer, weights)
 
     set_weights_and_activate_adapters(transformer, adapter_names, weights)
-    transformer.fuse_lora(lora_scale=1.0, adapter_names=adapter_names)
+    
+    # https://huggingface.co/docs/diffusers/main/en/using-diffusers/merge_loras
+    lora_scale = float(os.environ.get("APP_EXPERIMENTAL_LORA_SCALE", 1.0))
+    transformer.fuse_lora(lora_scale=lora_scale, adapter_names=adapter_names)

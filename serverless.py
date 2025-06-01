@@ -76,6 +76,10 @@ async def handler(job):
             
         selected_loras.append(lora_name)
         lora_values.append(lora.weight)
+        
+    if job_input.experimental is not None:
+        os.environ["APP_EXPERIMENTAL_ORIGINAL_LODA_LOADING"] = job_input.experimental.use_original_lora_loading
+        os.environ["APP_EXPERIMENTAL_LORA_SCALE"] = job_input.experimental.lora_scale
     
     job_args = {
         **job_input.config.model_dump(),
