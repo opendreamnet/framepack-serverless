@@ -1,19 +1,32 @@
-# FramePack Studio
+<h1 align="center">FramePack Studio</h1>
 
-FramePack Studio is an enhanced version of the FramePack demo script, designed to create intricate video scenes with improved prompt adherence. This is very much a work in progress, expect some bugs and broken features. 
-![screencapture-127-0-0-1-7860-2025-05-04-20_13_58](https://github.com/user-attachments/assets/8fcb90af-8c3f-47ca-8f23-61d9b59438ae)
+
+[![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/MtuM7gFJ3V)[![Patreon](https://img.shields.io/badge/Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white)](https://www.patreon.com/ColinU)
+
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/colinurbs/FramePack-Studio)
+
+FramePack Studio is an AI video generation application based on FramePack that strives to provide everything you need to create high quality video projects. 
 
 ## Current Features
 
 - **F1 and Original FramePack Models**: Run both in a single queue
+- **End Frame Control for 'Original' Model**: Provides greater control over generations
 - **Timestamped Prompts**: Define different prompts for specific time segments in your video
 - **Prompt Blending**: Define the blending time between timestamped prompts
-- **Basic LoRA Support**: Works with most (all?) hunyuan LoRAs
+- **LoRA Support**: Works with most (all?) hunyuan LoRAs
 - **Queue System**: Process multiple generation jobs without blocking the interface
 - **Metadata Saving/Import**: Prompt and seed are encoded into the output PNG, all other generation metadata is saved in a JSON file
 - **I2V and T2V**: Works with or without an input image to allow for more flexibility when working with standard LoRAs
 - **Latent Image Options**: When using T2V you can generate based on a black, white, green screen or pure noise image
+
+## Planned Features
+- **Upscaling and Post-processing**
+- **Generation Improvements**
+- **Video Extension**
+- **Audio Generation + TTS**
+- **Lipsyncing**
+- **Basic Editing**
+- **Additional Models**
 
 
 ## Fresh Installation
@@ -22,6 +35,7 @@ FramePack Studio is an enhanced version of the FramePack demo script, designed t
 
 - Python 3.10+
 - CUDA-compatible GPU with at least 8GB VRAM (16GB+ recommended)
+- 16GB System Memory (32GB+ strongly recommended) 
 
 ### Setup
 
@@ -59,10 +73,11 @@ Additional command line options:
 - `--server`: Specify the server address (default: 0.0.0.0)
 - `--port`: Specify a custom port
 - `--inbrowser`: Automatically open the interface in your browser
+- `--offline`: Disable HF model checks to allow use without internet
 
 ## LoRAs
 
-Add LoRAs to the /loras/ folder at the root of the installation. Select the LoRAs you wish to load and set the weights for each generation.
+Add LoRAs to the /loras/ folder at the root of the installation. Select the LoRAs you wish to load and set the weights for each generation. Most Hunyuan LoRAs were originally trained for T2V, it's often helpful to run a T2V generation to ensure they're working before useing input impages.
 
 NOTE: slow lora loading is a known issue
 
