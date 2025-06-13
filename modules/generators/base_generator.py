@@ -243,11 +243,14 @@ class BaseModelGenerator(ABC):
         
         print(f"APP_EXPERIMENTAL_ORIGINAL_LODA_LOADING={experimentalOriginalLodaLoading}")
         print(f"lora_values={lora_values}")
+        print(f"selected_loras={selected_loras}")
+        print(f"lora_loaded_names={lora_loaded_names}")
         
         # Load each selected LoRA
         for lora_name in selected_loras:
             try:
-                idx = lora_loaded_names.index(lora_name)
+                #idx = lora_loaded_names.index(lora_name)
+                idx = selected_loras.index(lora_name)
                 lora_file = None
                 
                 print(f"lora_name={lora_name}, idx={idx}")
