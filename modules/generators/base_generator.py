@@ -239,6 +239,8 @@ class BaseModelGenerator(ABC):
         # Ensure all LoRAs are unloaded first
         self.unload_loras()
         
+        experimentalOriginalLodaLoading = os.environ.get("APP_EXPERIMENTAL_ORIGINAL_LODA_LOADING", "false").lower() == "true"
+        
         # Load each selected LoRA
         for lora_name in selected_loras:
             try:
@@ -256,7 +258,7 @@ class BaseModelGenerator(ABC):
                     self.transformer = lora_utils.load_lora(self.transformer, lora_folder, lora_file)
                     
                     # Set LoRA strength if provided
-                    if os.environ.get("APP_EXPERIMENTAL_ORIGINAL_LODA_LOADING"):
+                    if experimentalOriginalLodaLoading:
                         if lora_values and idx < len(lora_values):
                             lora_strength = float(lora_values[idx])
                             print(f"Setting LoRA '{lora_name}' strength to {lora_strength}")
@@ -286,7 +288,7 @@ class BaseModelGenerator(ABC):
             except Exception as e:
                 print(f"Error loading LoRA {lora_name}: {e}")
         
-        if not os.environ.get("APP_EXPERIMENTAL_ORIGINAL_LODA_LOADING"):
+        if not experimentalOriginalLodaLoading:
             # Set LoRA strength if provided
             lora_utils.set_adapters(self.transformer, selected_loras, lora_values)
         
