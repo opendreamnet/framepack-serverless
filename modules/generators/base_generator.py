@@ -241,11 +241,17 @@ class BaseModelGenerator(ABC):
         
         experimentalOriginalLodaLoading = os.environ.get("APP_EXPERIMENTAL_ORIGINAL_LODA_LOADING", "false").lower() == "true"
         
+        print(f"APP_EXPERIMENTAL_ORIGINAL_LODA_LOADING={experimentalOriginalLodaLoading}")
+        print(f"lora_values={lora_values}")
+        
         # Load each selected LoRA
         for lora_name in selected_loras:
             try:
                 idx = lora_loaded_names.index(lora_name)
                 lora_file = None
+                
+                print(f"lora_name={lora_name}, idx={idx}")
+                
                 for ext in [".safetensors", ".pt"]:
                     candidate_path_relative = f"{lora_name}{ext}"
                     candidate_path_full = os.path.join(lora_folder, candidate_path_relative)
