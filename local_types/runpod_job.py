@@ -35,8 +35,8 @@ class JobInputModel(BaseModel):
     weight: Optional[float] = 1.0
     
 class JobInputExperimental(BaseModel):
-    use_original_lora_loading = False
-    lora_scale = 1.0
+    use_original_lora_loading: bool = False
+    lora_scale: float = 1.0
 
 class JobInput(BaseModel):
     image_url: str
