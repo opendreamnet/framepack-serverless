@@ -7,26 +7,22 @@
 
 FramePack Studio is an AI video generation application based on FramePack that strives to provide everything you need to create high quality video projects. 
 
+![screencapture-127-0-0-1-7860-2025-06-12-19_50_37](https://github.com/user-attachments/assets/b86a8422-f4ce-452b-80eb-2ba91945f2ea)
+![screencapture-127-0-0-1-7860-2025-06-12-19_52_33](https://github.com/user-attachments/assets/ebfb31ca-85b7-4354-87c6-aaab6d1c77b1)
+
+
 ## Current Features
 
 - **F1 and Original FramePack Models**: Run both in a single queue
 - **End Frame Control for 'Original' Model**: Provides greater control over generations
+- **Upscaling and Post-processing**
 - **Timestamped Prompts**: Define different prompts for specific time segments in your video
 - **Prompt Blending**: Define the blending time between timestamped prompts
 - **LoRA Support**: Works with most (all?) hunyuan LoRAs
-- **Queue System**: Process multiple generation jobs without blocking the interface
+- **Queue System**: Process multiple generation jobs without blocking the interface. Import and export queues.
 - **Metadata Saving/Import**: Prompt and seed are encoded into the output PNG, all other generation metadata is saved in a JSON file
 - **I2V and T2V**: Works with or without an input image to allow for more flexibility when working with standard LoRAs
 - **Latent Image Options**: When using T2V you can generate based on a black, white, green screen or pure noise image
-
-## Planned Features
-- **Upscaling and Post-processing**
-- **Generation Improvements**
-- **Video Extension**
-- **Audio Generation + TTS**
-- **Lipsyncing**
-- **Basic Editing**
-- **Additional Models**
 
 
 ## Fresh Installation
@@ -35,7 +31,8 @@ FramePack Studio is an AI video generation application based on FramePack that s
 
 - Python 3.10+
 - CUDA-compatible GPU with at least 8GB VRAM (16GB+ recommended)
-- 16GB System Memory (32GB+ strongly recommended) 
+- 16GB System Memory (32GB+ strongly recommended)
+- 80GB+ of storage (for models)
 
 ### Setup
 

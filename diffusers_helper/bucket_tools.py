@@ -64,6 +64,9 @@ def find_nearest_bucket(h, w, resolution=640):
     # Use the provided resolution or find the closest available bucket size
     # print(f"find_nearest_bucket called with h={h}, w={w}, resolution={resolution}")
     
+    # Convert resolution to int if it's not already
+    resolution = int(resolution) if not isinstance(resolution, int) else resolution
+    
     if resolution not in bucket_options:
         # Find the closest available resolution
         available_resolutions = list(bucket_options.keys())

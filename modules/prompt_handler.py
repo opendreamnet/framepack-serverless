@@ -114,7 +114,7 @@ def parse_timestamped_prompt(prompt_text: str, total_duration: float, latent_win
     sections = snap_to_section_boundaries(sections, latent_window_size)
     
     # Only reverse timestamps for Original generation type
-    if generation_type in ("Original", "Original with Endframe"):
+    if generation_type in ("Original", "Original with Endframe", "Video"):
         # Now reverse the timestamps to account for reverse generation
         reversed_sections = []
         for section in sections:

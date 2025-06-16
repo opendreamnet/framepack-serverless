@@ -25,10 +25,14 @@ class Settings:
             "gradio_temp_dir": os.environ.get("GRADIO_TEMP_DIR", tempfile.mkdtemp()),
             "input_files_dir": os.environ.get("FRAMEPACK_INPUT_DIR", str(home_root / "input_files")),  # New setting for input files
             "auto_save_settings": True,
-            "gradio_theme": "base",
+            "gradio_theme": "default",
             "mp4_crf": 16,
             "clean_up_videos": True,
-            "cleanup_temp_folder": False
+            "cleanup_temp_folder": False,
+            "override_system_prompt": False,
+            "system_prompt_template": "{\"template\": \"<|start_header_id|>system<|end_header_id|>\\n\\nDescribe the video by detailing the following aspects: 1. The main content and theme of the video.2. The color, shape, size, texture, quantity, text, and spatial relationships of the objects.3. Actions, events, behaviors temporal relationships, physical movement changes of the objects.4. background environment, light, style and atmosphere.5. camera angles, movements, and transitions used in the video:<|eot_id|><|start_header_id|>user<|end_header_id|>\\n\\n{}<|eot_id|>\", \"crop_start\": 95}",
+            "startup_model_type": "None",
+            "startup_preset_name": None
         }
         self.load_settings()
 

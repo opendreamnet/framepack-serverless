@@ -11,9 +11,61 @@ def encode_prompt_conds(prompt, text_encoder, text_encoder_2, tokenizer, tokeniz
     prompt = [prompt]
 
     # LLAMA
-
-    prompt_llama = [DEFAULT_PROMPT_TEMPLATE["template"].format(p) for p in prompt]
-    crop_start = DEFAULT_PROMPT_TEMPLATE["crop_start"]
+    
+    # Check if there's a custom system prompt template in settings
+    custom_template = None
+    try:
+        from modules.settings import Settings
+        settings = Settings()
+        override_system_prompt = settings.get("override_system_prompt", False)
+        custom_template_str = settings.get("system_prompt_template")
+        
+        if override_system_prompt and custom_template_str:
+            try:
+                # Convert the string representation to a dictionary
+                # Extract template and crop_start directly from the string using regex
+                import re
+                
+                # Try to extract the template value
+                template_match = re.search(r"['\"]template['\"]\s*:\s*['\"](.+?)['\"](?=\s*,|\s*})", custom_template_str, re.DOTALL)
+                crop_start_match = re.search(r"['\"]crop_start['\"]\s*:\s*(\d+)", custom_template_str)
+                
+                if template_match and crop_start_match:
+                    template_value = template_match.group(1)
+                    crop_start_value = int(crop_start_match.group(1))
+                    
+                    # Unescape any escaped characters in the template
+                    template_value = template_value.replace("\\n", "\n").replace("\\\"", "\"").replace("\\'", "'")
+                    
+                    custom_template = {
+                        "template": template_value,
+                        "crop_start": crop_start_value
+                    }
+                    print(f"Using custom system prompt template from settings: {custom_template}")
+                else:
+                    print(f"Could not extract template or crop_start from system prompt template string")
+                    print(f"Falling back to default template")
+                    custom_template = None
+            except Exception as e:
+                print(f"Error parsing custom system prompt template: {e}")
+                print(f"Falling back to default template")
+                custom_template = None
+        else:
+            if not override_system_prompt:
+                print(f"Override system prompt is disabled, using default template")
+            elif not custom_template_str:
+                print(f"No custom system prompt template found in settings")
+            custom_template = None
+    except Exception as e:
+        print(f"Error loading settings: {e}")
+        print(f"Falling back to default template")
+        custom_template = None
+    
+    # Use custom template if available, otherwise use default
+    template = custom_template if custom_template else DEFAULT_PROMPT_TEMPLATE
+    
+    prompt_llama = [template["template"].format(p) for p in prompt]
+    crop_start = template["crop_start"]
 
     llama_inputs = tokenizer(
         prompt_llama,
