@@ -142,7 +142,7 @@ def worker(
     # Store initial progress data in the job object if using a job stream
     if job_stream is not None:
         try:
-            from __main__ import job_queue
+            from studio import job_queue
             job = job_queue.get_job(job_id)
             if job:
                 job.progress_data = initial_progress_data
@@ -157,7 +157,7 @@ def worker(
     stream_to_use.output_queue.push(('monitor_job', job_id))
     
     # Always push to the main stream to ensure the UI is updated
-    from __main__ import stream as main_stream
+    from studio import stream as main_stream
     if main_stream:  # Always push to main stream regardless of whether it's the same as stream_to_use
         print(f"Pushing initial progress update to main stream for job {job_id}")
         main_stream.output_queue.push(('progress', (dummy_preview, 'Starting job...', make_progress_bar_html(0, 'Starting job...'))))
@@ -606,7 +606,7 @@ def worker(
             # Store progress data in the job object if using a job stream
             if job_stream is not None:
                 try:
-                    from __main__ import job_queue
+                    from studio import job_queue
                     job = job_queue.get_job(job_id)
                     if job:
                         job.progress_data = progress_data
@@ -618,7 +618,7 @@ def worker(
             
             # Always push to the main stream to ensure the UI is updated
             # This is especially important for resumed jobs
-            from __main__ import stream as main_stream
+            from studio import stream as main_stream
             if main_stream:  # Always push to main stream regardless of whether it's the same as stream_to_use
                 main_stream.output_queue.push(('progress', (preview, desc, make_progress_bar_html(percentage, segment_hint) + make_progress_bar_html(total_percentage, total_hint))))
                 

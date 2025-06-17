@@ -488,7 +488,7 @@ class VideoBaseModelGenerator(BaseModelGenerator):
             
             # Import settings from main module
             try:
-                from __main__ import settings
+                from studio import settings
                 video_processor = VideoProcessor(message_manager, settings.settings)
             except ImportError:
                 # Fallback to creating a new settings object

@@ -2112,7 +2112,7 @@ def update_queue_status_with_thumbnails(): # Function name is now slightly misle
         # Need access to the global job_queue instance from studio.py
         # This might require restructuring or passing job_queue differently.
         # For now, assuming it's accessible (this might fail if run standalone)
-        from __main__ import job_queue # Attempt to import from main script scope
+        from studio import job_queue # Attempt to import from main script scope
 
         jobs = job_queue.get_all_jobs()
         for job in jobs:
