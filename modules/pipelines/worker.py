@@ -20,7 +20,7 @@ from modules.pipelines.video_tools import combine_videos_sequentially_from_tenso
 from modules import DUMMY_LORA_NAME # Import the constant
 from . import create_pipeline
 
-import __main__ as studio_module # Get a reference to the __main__ module object
+import studio as studio_module # Get a reference to the __main__ module object
 
 @torch.no_grad()
 def get_cached_or_encode_prompt(prompt, text_encoder, text_encoder_2, tokenizer, tokenizer_2, target_device, prompt_embedding_cache):
