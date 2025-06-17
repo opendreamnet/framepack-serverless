@@ -105,7 +105,7 @@ def worker(
     print(f"Worker: Selected LoRAs for this worker: {selected_loras}")
     
     # Import globals from the main module
-    from studio import high_vram, args, text_encoder, text_encoder_2, tokenizer, tokenizer_2, vae, image_encoder, feature_extractor, prompt_embedding_cache, settings, stream
+    from studio import high_vram, text_encoder, text_encoder_2, tokenizer, tokenizer_2, vae, image_encoder, feature_extractor, prompt_embedding_cache, settings, stream
     
     # Ensure any existing LoRAs are unloaded from the current generator
     if studio_module.current_generator is not None:
@@ -248,7 +248,7 @@ def worker(
             feature_extractor=feature_extractor,
             high_vram=high_vram,
             prompt_embedding_cache=prompt_embedding_cache,
-            offline=args.offline,
+            offline=False,#args.offline,
             settings=settings
         )
         
