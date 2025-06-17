@@ -11,7 +11,7 @@ def setup_ffmpeg():
     # Get the directory of the current script, which is now inside 'modules/toolbox/'
     script_dir = os.path.dirname(os.path.abspath(__file__))
     # The 'bin' directory is created directly inside this script's directory.
-    bin_dir = os.path.join(script_dir, 'bin')
+    bin_dir = os.environ.get("FRAMEPACK_BIN_DIR", os.path.join(script_dir, 'toolbox', 'bin'))
     os.makedirs(bin_dir, exist_ok=True)
 
     # --- Platform-specific configuration ---

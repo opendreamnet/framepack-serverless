@@ -92,7 +92,7 @@ class VideoProcessor:
         # --- Priority 1: Bundled ---
         try:
             script_dir = os.path.dirname(os.path.abspath(__file__))
-            bin_dir = os.path.join(script_dir, 'bin')
+            bin_dir = os.environ.get("FRAMEPACK_BIN_DIR", os.path.join(script_dir, 'toolbox', 'bin'))
             bundled_ffmpeg = os.path.join(bin_dir, ffmpeg_name)
             bundled_ffprobe = os.path.join(bin_dir, ffprobe_name)
             if os.path.exists(bundled_ffmpeg):

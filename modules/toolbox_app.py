@@ -31,7 +31,7 @@ except ImportError:
 # Check if FFmpeg is set up, if not, run the setup
 script_dir = os.path.dirname(os.path.abspath(__file__))
 # Construct the correct path to the target bin directory.
-bin_dir = os.path.join(script_dir, 'toolbox', 'bin')
+bin_dir = os.environ.get("FRAMEPACK_BIN_DIR", os.path.join(script_dir, 'toolbox', 'bin'))
 
 ffmpeg_exe_name = 'ffmpeg.exe' if sys.platform == "win32" else 'ffmpeg'
 ffmpeg_full_path = os.path.join(bin_dir, ffmpeg_exe_name)
