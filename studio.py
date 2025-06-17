@@ -332,13 +332,7 @@ def process(
         *lora_args,
         save_metadata_checked=True,  # NEW: Parameter to control metadata saving
     ):
-    
-    if more_lora_values:
-        if lora_values:
-            lora_values = list(lora_values) + list(more_lora_values)
-        else:
-            lora_values = list(more_lora_values)
-    
+       
     # Create a blank black image if no 
     # Create a default image based on the selected latent_type
     has_input_image = True

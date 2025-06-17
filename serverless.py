@@ -87,12 +87,45 @@ async def handler(job):
         "end_frame_image": None,
         "end_frame_strength": None,
         "clean_up_videos": True,
-        "lora_loaded_names": lora_names,
+        "input_image_path": None,
+        "combine_with_source": False,
+        "num_cleaned_frames": 5,
         "selected_loras": selected_loras,
-        "lora_values": lora_values,
     }
     
-    response = process(**job_args)
+    all_args = [
+        job_args['model_type'],
+        job_args['input_image'],
+        job_args['end_frame_image'],
+        job_args['end_frame_strength'],
+        job_args['prompt_text'],
+        job_args['n_prompt'],
+        job_args['seed'],
+        job_args['total_second_length'],
+        job_args['latent_window_size'],
+        job_args['steps'],
+        job_args['cfg'],
+        job_args['gs'],
+        job_args['rs'],
+        job_args['use_teacache'],
+        job_args['teacache_num_steps'],
+        job_args['teacache_rel_l1_thresh'],
+        job_args['blend_sections'],
+        job_args['latent_type'],
+        job_args['clean_up_videos'],
+        job_args['selected_loras'],
+        job_args['resolutionW'],
+        job_args['resolutionH'],
+        job_args['input_image_path'],
+        job_args['combine_with_source'],
+        job_args['num_cleaned_frames'],
+        
+        # *lora_args
+        lora_names,
+        *lora_values
+    ]
+    
+    response = process(*all_args)
     job_id = response[1]
     
     if not job_id:

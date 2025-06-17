@@ -24,8 +24,6 @@ class JobInputConfig(BaseModel):
     blend_sections: int = 4
     # Used as a starting point if no image is provided
     latent_type: str = "Black"
-    # Select one or more LoRAs to use for this job
-    #selected_loras: list[str] = Field(default_factory=list)
     resolutionW: int = 640
     resolutionH: int = 640
     
