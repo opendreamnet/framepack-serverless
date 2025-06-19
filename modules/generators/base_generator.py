@@ -245,13 +245,13 @@ class BaseModelGenerator(ABC):
         import time
         from studio import high_vram, settings
         
-        if not high_vram:
-            start_time = time.perf_counter()
-            move_model_to_device_with_memory_preservation(self.transformer, target_device=gpu, preserved_memory_gb=settings.get("gpu_memory_preservation"))
-            print(f"Moved transformer to {gpu}: {time.perf_counter() - start_time:.2f}s")
-        
         # Load each selected LoRA
-        if isinstance(selected_loras, list):
+        if isinstance(selected_loras, list) and len(selected_loras) > 0:
+            if not high_vram:
+                start_time = time.perf_counter()
+                move_model_to_device_with_memory_preservation(self.transformer, target_device=gpu, preserved_memory_gb=settings.get("gpu_memory_preservation"))
+                print(f"Moved transformer to {gpu}: {time.perf_counter() - start_time:.2f}s")
+            
             for lora_name in selected_loras:
                 try:
                     #idx = lora_loaded_names.index(lora_name)
@@ -305,5 +305,9 @@ class BaseModelGenerator(ABC):
         
         # Verify LoRA state after loading
         self.verify_lora_state("After loading LoRAs")
-        #raise Exception("This is a placeholder to stop execution here.")
+        
+        if not high_vram:
+            start_time = time.perf_counter()
+            self.transformer.to(cpu)
+            print(f"Moved transformer to {cpu}: {time.perf_counter() - start_time:.2f}s")
 # with the `if` condition and the `for` loop, and then I will provide the *entire rest of the function*
