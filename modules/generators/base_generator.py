@@ -2,6 +2,7 @@ import torch
 import os # required for os.path
 from abc import ABC, abstractmethod
 from diffusers_helper import lora_utils
+from diffusers_helper.memory import cpu, gpu, move_model_to_device_with_memory_preservation
 
 class BaseModelGenerator(ABC):
     """
@@ -241,6 +242,14 @@ class BaseModelGenerator(ABC):
         print(f"selected_loras={selected_loras}")
         print(f"lora_loaded_names={lora_loaded_names}")
         
+        import time
+        from studio import high_vram, settings
+        
+        if not high_vram:
+            start_time = time.perf_counter()
+            move_model_to_device_with_memory_preservation(self.transformer, target_device=gpu, preserved_memory_gb=settings.get("gpu_memory_preservation"))
+            print(f"Moved transformer to {gpu}: {time.perf_counter() - start_time:.2f}s")
+        
         # Load each selected LoRA
         if isinstance(selected_loras, list):
             for lora_name in selected_loras:
@@ -296,4 +305,5 @@ class BaseModelGenerator(ABC):
         
         # Verify LoRA state after loading
         self.verify_lora_state("After loading LoRAs")
+        #raise Exception("This is a placeholder to stop execution here.")
 # with the `if` condition and the `for` loop, and then I will provide the *entire rest of the function*

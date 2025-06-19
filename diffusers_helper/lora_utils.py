@@ -54,8 +54,19 @@ def load_lora(transformer, lora_path: Path, weight_name: Optional[str] = "pytorc
         transformer.delete_adapters([adapter_name])
         
     start_time = time.perf_counter()
-    # Load the adapter with the original name
-    transformer.load_lora_adapter(state_dict, network_alphas=None, adapter_name=adapter_name)
+    
+    device = next(transformer.parameters()).device if hasattr(transformer, 'parameters') else torch.device("cpu")
+    print("----------")
+    print("device:", device)
+    
+    with torch.inference_mode():
+        # Load the adapter with the original name
+        transformer.load_lora_adapter(
+            state_dict, 
+            network_alphas=None, 
+            adapter_name=adapter_name,
+        )
+        
     print(f"LoRA weights '{adapter_name}' loaded successfully: {time.perf_counter() - start_time:.2f}s")
     
     return transformer

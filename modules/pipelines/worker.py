@@ -32,7 +32,7 @@ def get_cached_or_encode_prompt(prompt, text_encoder, text_encoder_2, tokenizer,
     from diffusers_helper.hunyuan import encode_prompt_conds, crop_or_pad_yield_mask
     
     if prompt in prompt_embedding_cache:
-        print(f"Cache hit for prompt: {prompt[:60]}...")
+        print(f"Cache hit for prompt.")
         llama_vec_cpu, llama_mask_cpu, clip_l_pooler_cpu = prompt_embedding_cache[prompt]
         # Move cached embeddings (from CPU) to the target device
         llama_vec = llama_vec_cpu.to(target_device)
@@ -40,13 +40,18 @@ def get_cached_or_encode_prompt(prompt, text_encoder, text_encoder_2, tokenizer,
         clip_l_pooler = clip_l_pooler_cpu.to(target_device)
         return llama_vec, llama_attention_mask, clip_l_pooler
     else:
-        print(f"Cache miss for prompt: {prompt[:60]}...")
+        print(f"Cache miss for prompt!")
+        
+        start_time = time.perf_counter()
         llama_vec, clip_l_pooler = encode_prompt_conds(
             prompt, text_encoder, text_encoder_2, tokenizer, tokenizer_2
         )
         llama_vec, llama_attention_mask = crop_or_pad_yield_mask(llama_vec, length=512)
+        print(f"Prompt loaded: {time.perf_counter() - start_time:.2f}s")
+        
         # Store CPU copies in cache
         prompt_embedding_cache[prompt] = (llama_vec.cpu(), llama_attention_mask.cpu() if llama_attention_mask is not None else None, clip_l_pooler.cpu())
+        
         # Return embeddings already on the target device (as encode_prompt_conds uses the model's device)
         return llama_vec, llama_attention_mask, clip_l_pooler
 
