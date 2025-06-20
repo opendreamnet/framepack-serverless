@@ -18,7 +18,7 @@ class Settings:
         # Set default paths relative to project root
         self.default_settings = {
             "save_metadata": True,
-            "gpu_memory_preservation": os.environ.get("FRAMEPACK_GPU_MEMORY_BUFFER", float(6.0)),
+            "gpu_memory_preservation": float(os.environ.get("FRAMEPACK_GPU_MEMORY_BUFFER", "6.0")),
             "output_dir": os.environ.get("FRAMEPACK_OUTPUT_DIR", str(home_root / "outputs")),
             "metadata_dir": os.environ.get("FRAMEPACK_METADATA_DIR", str(home_root / "metadata")),
             "lora_dir": os.environ.get("FRAMEPACK_LORAS_DIR", str(home_root / "loras")),
