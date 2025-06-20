@@ -38,7 +38,7 @@ class Settings:
 
     def load_settings(self) -> Dict[str, Any]:
         """Load settings from file or return defaults"""
-        if self.settings_file.exists():
+        if os.environ.get("RUNPOD_WEBHOOK_GET_JOB", None) is None and self.settings_file.exists():
             try:
                 with open(self.settings_file, 'r') as f:
                     loaded_settings = json.load(f)
