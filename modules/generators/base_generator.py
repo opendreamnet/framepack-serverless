@@ -252,7 +252,7 @@ class BaseModelGenerator(ABC):
                 move_model_to_device_with_memory_preservation(
                     self.transformer, 
                     target_device=gpu, 
-                    preserved_memory_gb=int(os.environ.get('FRAMEPACK_LORA_LOAD_PRESERVED_MEMORY_GB', "6"))
+                    preserved_memory_gb=settings.get("preserved_memory_gb", 6),
                 )
                 print(f"Moved transformer to {gpu}: {time.perf_counter() - start_time:.2f}s")
             
@@ -309,9 +309,4 @@ class BaseModelGenerator(ABC):
         
         # Verify LoRA state after loading
         self.verify_lora_state("After loading LoRAs")
-        
-        if not high_vram and os.environ.get('FRAMEPACK_LORA_LOAD_ON_GPU') and os.environ.get('FRAMEPACK_LORA_UNLOAD_ON_CPU'):
-            start_time = time.perf_counter()
-            self.transformer.to(cpu)
-            print(f"Moved transformer to {cpu}: {time.perf_counter() - start_time:.2f}s")
 # with the `if` condition and the `for` loop, and then I will provide the *entire rest of the function*
