@@ -1,9 +1,16 @@
 {
   "input": {
     "image_url": "zOMJilcOiZAEO94tOEEMRVszb/O4lCsVEshOlMT/5MTx1hPocEqD7f56wjxCWVCxKVK9O6mlvIqwg/Vmyz92sUT7020Ev5Z9PoZBncWtkrY+d8m48dTUz2UN+SYs2Z5rf7kt1HN4lIUPwEbL6+QHfA==",
-
-    "prompt_text": "The woman puts her hands behind her head and begins to dance gracefully, with clear movements, full of charm.",
-    "total_second_length": 5,
-    "steps": 5
+    "config": {
+      "prompt_text": "The woman puts her hands behind her head and begins to dance gracefully, with clear movements, full of charm.",
+      "total_second_length": 1,
+      "steps": 5
+    },
+    "loras": [
+      {
+        "name": "test.safetensors",
+        "source": ""
+      }
+    ]
   }
 }
