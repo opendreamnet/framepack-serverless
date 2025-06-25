@@ -54,11 +54,7 @@ def load_lora(transformer, lora_path: Path, weight_name: Optional[str] = "pytorc
         transformer.delete_adapters([adapter_name])
         
     start_time = time.perf_counter()
-    
-    device = next(transformer.parameters()).device if hasattr(transformer, 'parameters') else torch.device("cpu")
-    print("----------")
-    print("device:", device)
-    
+       
     # Load the adapter with the original name
     transformer.load_lora_adapter(
         state_dict, 
@@ -144,5 +140,5 @@ def set_adapters(
     set_weights_and_activate_adapters(transformer, adapter_names, weights)
     
     # https://huggingface.co/docs/diffusers/main/en/using-diffusers/merge_loras
-    lora_scale = float(os.environ.get("APP_EXPERIMENTAL_LORA_SCALE", 1.0))
-    transformer.fuse_lora(lora_scale=lora_scale, adapter_names=adapter_names)
+    #lora_scale = float(os.environ.get("APP_EXPERIMENTAL_LORA_SCALE", 1.0))
+    #transformer.fuse_lora(lora_scale=lora_scale, adapter_names=adapter_names)

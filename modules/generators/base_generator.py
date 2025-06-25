@@ -238,8 +238,7 @@ class BaseModelGenerator(ABC):
         # Ensure all LoRAs are unloaded first
         self.unload_loras()
         
-        print(f"lora_values={lora_values}")
-        print(f"selected_loras={selected_loras}")
+        print(f"selected_loras={selected_loras}, lora_values={lora_values}")
         print(f"lora_loaded_names={lora_loaded_names}")
         
         import time

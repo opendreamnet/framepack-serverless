@@ -32,12 +32,7 @@ class JobInputModel(BaseModel):
     source: str
     weight: Optional[float] = 1.0
     
-class JobInputExperimental(BaseModel):
-    use_original_lora_loading: bool = False
-    lora_scale: float = 1.0
-
 class JobInput(BaseModel):
     image_url: str
     loras: list[JobInputModel] = Field(default_factory=list)
     config: JobInputConfig
-    experimental: Optional[JobInputExperimental] = None
