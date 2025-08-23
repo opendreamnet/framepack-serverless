@@ -8,7 +8,7 @@ queue_images/
 modules/toolbox/model_esrgan/
 modules/toolbox/model_rife/
 .framepack/
-modules/toolbox/data/filter_presets.json
+modules/toolbox/data/
 modules/toolbox/bin
 queue.json
 settings.json

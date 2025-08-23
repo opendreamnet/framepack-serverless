@@ -2,7 +2,8 @@ import torch
 import os # required for os.path
 from abc import ABC, abstractmethod
 from diffusers_helper import lora_utils
-from diffusers_helper.memory import cpu, gpu, move_model_to_device_with_memory_preservation
+from typing import List, Optional
+from pathlib import Path
 
 class BaseModelGenerator(ABC):
     """
@@ -221,91 +222,60 @@ class BaseModelGenerator(ABC):
         
         print(f"Moved all LoRA adapters to {target_device}")
     
-    def load_loras(self, selected_loras, lora_folder, lora_loaded_names, lora_values=None):
+    def load_loras(self, selected_loras: List[str], lora_folder: str, lora_loaded_names: List[str], lora_values: Optional[List[float]] = None):
         """
-        Load LoRAs into the transformer model.
+        Load LoRAs into the transformer model and applies their weights.
         
         Args:
-            selected_loras: List of LoRA names to load
-            lora_folder: Folder containing the LoRA files
-            lora_loaded_names: List of loaded LoRA names
-            lora_values: Optional list of LoRA strength values
+            selected_loras: List of LoRA base names to load (e.g., ["lora_A", "lora_B"]).
+            lora_folder: Path to the folder containing the LoRA files.
+            lora_loaded_names: The master list of ALL available LoRA names, used for correct weight indexing.
+            lora_values: A list of strength values corresponding to lora_loaded_names.
         """
-        if self.transformer is None:
-            print("Cannot load LoRAs: Transformer model is not loaded")
-            return
-            
-        # Ensure all LoRAs are unloaded first
         self.unload_loras()
-        
-        print(f"selected_loras={selected_loras}, lora_values={lora_values}")
-        print(f"lora_loaded_names={lora_loaded_names}")
-        
-        import time
-        from studio import high_vram, settings
-        
-        # Load each selected LoRA
-        if isinstance(selected_loras, list) and len(selected_loras) > 0:
-            if not high_vram and os.environ.get('FRAMEPACK_LORA_LOAD_ON_GPU'):
-                start_time = time.perf_counter()
-                move_model_to_device_with_memory_preservation(
-                    self.transformer, 
-                    target_device=gpu, 
-                    preserved_memory_gb=settings.get("preserved_memory_gb", 6),
-                )
-                print(f"Moved transformer to {gpu}: {time.perf_counter() - start_time:.2f}s")
+
+        if not selected_loras:
+            print("No LoRAs selected, skipping loading.")
+            return
+
+        lora_dir = Path(lora_folder)
+
+        adapter_names = []
+        strengths = []
+
+        for idx, lora_base_name in enumerate(selected_loras):
+            lora_file = None
+            for ext in (".safetensors", ".pt"):
+                candidate_path_relative = f"{lora_base_name}{ext}"
+                candidate_path_full = lora_dir / candidate_path_relative
+                if candidate_path_full.is_file():
+                    lora_file = candidate_path_relative
+                    break
             
-            for lora_name in selected_loras:
+            if not lora_file:
+                print(f"Warning: LoRA file for base name '{lora_base_name}' not found; skipping.")
+                continue
+
+            print(f"Loading LoRA from '{lora_file}'...")
+            
+            self.transformer, adapter_name = lora_utils.load_lora(self.transformer, lora_dir, lora_file)
+            adapter_names.append(adapter_name)
+
+            weight = 1.0
+            if lora_values:
                 try:
-                    #idx = lora_loaded_names.index(lora_name)
-                    idx = selected_loras.index(lora_name)
-                    lora_file = None
-                
-                    print(f"lora_name={lora_name}, idx={idx}")
-                
-                    for ext in [".safetensors", ".pt"]:
-                        candidate_path_relative = f"{lora_name}{ext}"
-                        candidate_path_full = os.path.join(lora_folder, candidate_path_relative)
-                        if os.path.isfile(candidate_path_full):
-                            lora_file = candidate_path_relative
-                            break
-                            
-                    if lora_file:
-                        print(f"Loading LoRA '{lora_file}' to {self.get_model_name()} model")
-                        self.transformer = lora_utils.load_lora(self.transformer, lora_folder, lora_file)
-                        
-                        # Set LoRA strength if provided
-                        if lora_values and idx < len(lora_values):
-                            lora_strength = float(lora_values[idx])
-                            print(f"Setting LoRA '{lora_name}' strength to {lora_strength}")
-                            
-                            # Set scaling for this LoRA by iterating through modules
-                            for name, module in self.transformer.named_modules():
-                                if hasattr(module, 'scaling'):
-                                    if isinstance(module.scaling, dict):
-                                        # Handle ModuleDict case (PEFT implementation)
-                                        if lora_name in module.scaling:
-                                            if isinstance(module.scaling[lora_name], torch.Tensor):
-                                                module.scaling[lora_name] = torch.tensor(
-                                                    lora_strength, device=module.scaling[lora_name].device
-                                                )
-                                            else:
-                                                module.scaling[lora_name] = lora_strength
-                                    else:
-                                        # Handle direct attribute case for scaling if needed
-                                        if isinstance(module.scaling, torch.Tensor):
-                                            module.scaling = torch.tensor(
-                                                lora_strength, device=module.scaling.device
-                                            )
-                                        else:
-                                            module.scaling = lora_strength
+                    master_list_idx = lora_loaded_names.index(lora_base_name)
+                    if master_list_idx < len(lora_values):
+                        weight = float(lora_values[master_list_idx])
                     else:
-                        print(f"LoRA file for {lora_name} not found!")
-                except Exception as e:
-                    print(f"Error loading LoRA {lora_name}: {e}")
-        else:
-            print(f"Warning: selected_loras is not a list (type: {type(selected_loras)}), skipping LoRA loading.")
+                        print(f"Warning: Index mismatch for '{lora_base_name}'. Defaulting to 1.0.")
+                except ValueError:
+                    print(f"Warning: LoRA '{lora_base_name}' not found in master list. Defaulting to 1.0.")
+            
+            strengths.append(weight)
         
-        # Verify LoRA state after loading
-        self.verify_lora_state("After loading LoRAs")
-# with the `if` condition and the `for` loop, and then I will provide the *entire rest of the function*
+        if adapter_names:
+            print(f"Activating adapters: {adapter_names} with strengths: {strengths}")
+            lora_utils.set_adapters(self.transformer, adapter_names, strengths)
+
+        self.verify_lora_state("After completing load_loras")

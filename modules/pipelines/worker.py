@@ -8,6 +8,7 @@ import torch
 import datetime
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo
+from diffusers_helper.models.mag_cache import MagCache
 from diffusers_helper.utils import save_bcthw_as_mp4, generate_timestamp, resize_and_center_crop
 from diffusers_helper.memory import cpu, gpu, move_model_to_device_with_memory_preservation, offload_model_from_device_for_memory_preservation, fake_diffusers_current_device, unload_complete_models, load_model_as_complete
 from diffusers_helper.thread_utils import AsyncStream
@@ -18,6 +19,8 @@ from modules.prompt_handler import parse_timestamped_prompt
 from modules.generators import create_model_generator
 from modules.pipelines.video_tools import combine_videos_sequentially_from_tensors
 from modules import DUMMY_LORA_NAME # Import the constant
+from modules.llm_captioner import unload_captioning_model
+from modules.llm_enhancer import unload_enhancing_model
 from . import create_pipeline
 
 import studio as studio_module # Get a reference to the __main__ module object
@@ -73,6 +76,10 @@ def worker(
     use_teacache, 
     teacache_num_steps, 
     teacache_rel_l1_thresh,
+    use_magcache,
+    magcache_threshold,
+    magcache_max_consecutive_skips,
+    magcache_retention_ratio,
     blend_sections, 
     latent_type,
     selected_loras,
@@ -95,6 +102,12 @@ def worker(
     """
     Worker function for video generation.
     """
+
+    random_generator = torch.Generator("cpu").manual_seed(seed)
+
+    unload_enhancing_model()
+    unload_captioning_model()
+
     # Filter out the dummy LoRA from selected_loras at the very beginning of the worker
     actual_selected_loras_for_worker = []
     if isinstance(selected_loras, list):
@@ -181,7 +194,6 @@ def worker(
             "gpu_memory_preservation": settings.get("gpu_memory_preservation", 6),
             "mp4_crf": settings.get("mp4_crf", 16),
             "clean_up_videos": settings.get("clean_up_videos", True),
-            "cleanup_temp_folder": settings.get("cleanup_temp_folder", True),
             "gradio_temp_dir": settings.get("gradio_temp_dir", "./gradio_temp"),
             "high_vram": high_vram
         }
@@ -209,6 +221,10 @@ def worker(
             'use_teacache': use_teacache,
             'teacache_num_steps': teacache_num_steps,
             'teacache_rel_l1_thresh': teacache_rel_l1_thresh,
+            'use_magcache': use_magcache,
+            'magcache_threshold': magcache_threshold,
+            'magcache_max_consecutive_skips': magcache_max_consecutive_skips,
+            'magcache_retention_ratio': magcache_retention_ratio,
             'selected_loras': selected_loras,
             'has_input_image': has_input_image,
             'lora_values': lora_values,
@@ -405,31 +421,61 @@ def worker(
             input_video_frame_count = video_latents.shape[2]
         else:
             # Regular image processing
-            input_image_np = job_params['input_image']
             height = job_params['height']
             width = job_params['width']
-            
-            input_image_pt = torch.from_numpy(input_image_np).float() / 127.5 - 1
-            input_image_pt = input_image_pt.permute(2, 0, 1)[None, :, None]
 
-            # VAE encoding
-            stream_to_use.output_queue.push(('progress', (None, '', make_progress_bar_html(0, 'VAE encoding ...'))))
+            if not has_input_image and job_params.get('latent_type') == 'Noise':
+                # print("************************************************")
+                # print("** Using 'Noise' latent type for T2V workflow **")
+                # print("************************************************")
 
-            if not high_vram:
-                load_model_as_complete(vae, target_device=gpu)
+                # Create a random latent to serve as the initial VAE context anchor.
+                # This provides a random starting point without visual bias.
+                start_latent = torch.randn(
+                    (1, 16, 1, height // 8, width // 8),
+                    generator=random_generator, device=random_generator.device
+                ).to(device=gpu, dtype=torch.float32)
 
-            from diffusers_helper.hunyuan import vae_encode
-            start_latent = vae_encode(input_image_pt, vae)
+                # Create a neutral black image to generate a valid "null" CLIP Vision embedding.
+                # This provides the model with a valid, in-distribution unconditional image prompt.
+                # RT_BORG: Clip doesn't understand noise at all. I also tried using
+                #   image_encoder_last_hidden_state = torch.zeros((1, 257, 1152), device=gpu, dtype=studio_module.current_generator.transformer.dtype)
+                # to represent a "null" CLIP Vision embedding in the shape for the CLIP encoder,
+                # but the Video model wasn't trained to handle zeros, so using a neutral black image for CLIP.
 
-            # CLIP Vision
-            stream_to_use.output_queue.push(('progress', (None, '', make_progress_bar_html(0, 'CLIP Vision encoding ...'))))
+                black_image_np = np.zeros((height, width, 3), dtype=np.uint8)
 
-            if not high_vram:
-                load_model_as_complete(image_encoder, target_device=gpu)
+                if not high_vram:
+                    load_model_as_complete(image_encoder, target_device=gpu)
 
-            from diffusers_helper.clip_vision import hf_clip_vision_encode
-            image_encoder_output = hf_clip_vision_encode(input_image_np, feature_extractor, image_encoder)
-            image_encoder_last_hidden_state = image_encoder_output.last_hidden_state
+                from diffusers_helper.clip_vision import hf_clip_vision_encode
+                image_encoder_output = hf_clip_vision_encode(black_image_np, feature_extractor, image_encoder)
+                image_encoder_last_hidden_state = image_encoder_output.last_hidden_state
+
+            else:
+                input_image_np = job_params['input_image']
+                
+                input_image_pt = torch.from_numpy(input_image_np).float() / 127.5 - 1
+                input_image_pt = input_image_pt.permute(2, 0, 1)[None, :, None]
+
+                # Start image encoding with VAE
+                stream_to_use.output_queue.push(('progress', (None, '', make_progress_bar_html(0, 'VAE encoding ...'))))
+
+                if not high_vram:
+                    load_model_as_complete(vae, target_device=gpu)
+
+                from diffusers_helper.hunyuan import vae_encode
+                start_latent = vae_encode(input_image_pt, vae)
+
+                # CLIP Vision
+                stream_to_use.output_queue.push(('progress', (None, '', make_progress_bar_html(0, 'CLIP Vision encoding ...'))))
+
+                if not high_vram:
+                    load_model_as_complete(image_encoder, target_device=gpu)
+
+                from diffusers_helper.clip_vision import hf_clip_vision_encode
+                image_encoder_output = hf_clip_vision_encode(input_image_np, feature_extractor, image_encoder)
+                image_encoder_last_hidden_state = image_encoder_output.last_hidden_state
 
         # VAE encode end_frame_image if provided
         end_frame_latent = None
@@ -499,7 +545,6 @@ def worker(
         # Sampling
         stream_to_use.output_queue.push(('progress', (None, '', make_progress_bar_html(0, 'Start sampling ...'))))
 
-        rnd = torch.Generator("cpu").manual_seed(seed)
         num_frames = latent_window_size * 4 - 3
 
         # Initialize total_generated_latent_frames for Video model
@@ -511,8 +556,9 @@ def worker(
             
             # For F1 model, initialize with start latent
             if model_type == "F1":
-                history_latents = studio_module.current_generator.initialize_with_start_latent(history_latents, start_latent)
-                total_generated_latent_frames = 1  # Start with 1 for F1 model since it includes the first frame
+                history_latents = studio_module.current_generator.initialize_with_start_latent(history_latents, start_latent, has_input_image)
+                # If we had a real start image, it was just added to the history_latents
+                total_generated_latent_frames = 1 if has_input_image else 0
             elif model_type == "Original" or model_type == "Original with Endframe":
                 total_generated_latent_frames = 0
 
@@ -631,6 +677,31 @@ def worker(
             if main_stream:
                 main_stream.output_queue.push(('job_id', job_id))
                 main_stream.output_queue.push(('monitor_job', job_id))
+
+        # MagCache / TeaCache Initialization Logic
+        magcache = None
+        # RT_BORG: I cringe at this, but refactoring to introduce an actual model class will fix it.
+        model_family = "F1" if "F1" in model_type else "Original"
+
+        if settings.get("calibrate_magcache"): # Calibration mode (forces MagCache on)
+            print("Setting Up MagCache for Calibration")
+            is_calibrating = settings.get("calibrate_magcache")
+            studio_module.current_generator.transformer.initialize_teacache(enable_teacache=False) # Ensure TeaCache is off
+            magcache = MagCache(model_family=model_family, height=height, width=width, num_steps=steps, is_calibrating=is_calibrating, threshold=magcache_threshold, max_consectutive_skips=magcache_max_consecutive_skips, retention_ratio=magcache_retention_ratio)
+            studio_module.current_generator.transformer.install_magcache(magcache)
+        elif use_magcache: # User selected MagCache
+            print("Setting Up MagCache")
+            magcache = MagCache(model_family=model_family, height=height, width=width, num_steps=steps, is_calibrating=False, threshold=magcache_threshold, max_consectutive_skips=magcache_max_consecutive_skips, retention_ratio=magcache_retention_ratio)
+            studio_module.current_generator.transformer.initialize_teacache(enable_teacache=False) # Ensure TeaCache is off
+            studio_module.current_generator.transformer.install_magcache(magcache)
+        elif use_teacache:
+            print("Setting Up TeaCache")
+            studio_module.current_generator.transformer.initialize_teacache(enable_teacache=True, num_steps=teacache_num_steps, rel_l1_thresh=teacache_rel_l1_thresh)
+            studio_module.current_generator.transformer.uninstall_magcache()
+        else:
+            print("No Transformer Cache in use")
+            studio_module.current_generator.transformer.initialize_teacache(enable_teacache=False)
+            studio_module.current_generator.transformer.uninstall_magcache()
 
         # --- Main generation loop ---
         # `i_section_loop` will be our loop counter for applying end_frame_latent
@@ -776,10 +847,6 @@ def worker(
                 if selected_loras:
                     studio_module.current_generator.move_lora_adapters_to_device(gpu)
 
-            if use_teacache:
-                studio_module.current_generator.transformer.initialize_teacache(enable_teacache=True, num_steps=teacache_num_steps, rel_l1_thresh=teacache_rel_l1_thresh)
-            else:
-                studio_module.current_generator.transformer.initialize_teacache(enable_teacache=False)
 
             from diffusers_helper.pipelines.k_diffusion_hunyuan import sample_hunyuan
             generated_latents = sample_hunyuan(
@@ -791,7 +858,7 @@ def worker(
                 distilled_guidance_scale=gs,
                 guidance_rescale=rs,
                 num_inference_steps=steps,
-                generator=rnd,
+                generator=random_generator,
                 prompt_embeds=llama_vec,
                 prompt_embeds_mask=llama_attention_mask,
                 prompt_poolers=clip_l_pooler,
@@ -811,6 +878,14 @@ def worker(
                 callback=callback,
             )
 
+            # RT_BORG: Observe the MagCache skip patterns during dev.
+            # RT_BORG: We need to use a real logger soon!
+            # if magcache is not None and magcache.is_enabled:
+            #     print(f"MagCache skipped: {len(magcache.steps_skipped_list)} of {steps} steps: {magcache.steps_skipped_list}")
+
+            if model_type in ("Original", "Original with Endframe") and has_input_image and is_last_section:
+                generated_latents = torch.cat([start_latent.to(generated_latents), generated_latents], dim=2)
+            
             total_generated_latent_frames += int(generated_latents.shape[2])
             # Update history latents using the generator
             history_latents = studio_module.current_generator.update_history_latents(history_latents, generated_latents)
@@ -827,7 +902,7 @@ def worker(
             if history_pixels is None:
                 history_pixels = vae_decode(real_history_latents, vae).cpu()
             else:
-                section_latent_frames = studio_module.current_generator.get_section_latent_frames(latent_window_size, is_last_section)
+                section_latent_frames = (latent_window_size * 2 + 1) if model_type in ("Original", "Original with Endframe") and has_input_image and is_last_section else studio_module.current_generator.get_section_latent_frames(latent_window_size, is_last_section)
                 overlapped_frames = latent_window_size * 4 - 3
 
                 # Get current pixels using the generator
@@ -853,6 +928,18 @@ def worker(
 
             # We'll handle combining the videos after the entire generation is complete
             # This section intentionally left empty to remove the in-process combination
+            # --- END Main generation loop ---
+
+        magcache = studio_module.current_generator.transformer.magcache
+        if magcache is not None:
+            if magcache.is_calibrating:
+                output_file = os.path.join(settings.get("output_dir"), "magcache_configuration.txt")
+                print(f"MagCache calibration job complete. Appending stats to configuration file: {output_file}")
+                magcache.append_calibration_to_file(output_file)
+            elif magcache.is_enabled:
+                print(f"MagCache ({100.0 * magcache.total_cache_hits / magcache.total_cache_requests:.2f}%) skipped {magcache.total_cache_hits} of {magcache.total_cache_requests} steps.")
+            studio_module.current_generator.transformer.uninstall_magcache()
+            magcache = None
 
         # Handle the results
         result = pipeline.handle_results(job_params, output_filename)
@@ -912,30 +999,6 @@ def worker(
                             print(f"Failed to delete {full_path}: {e}")
             except Exception as e:
                 print(f"Error during video cleanup: {e}")
-        
-        # Clean up temp folder if enabled
-        if settings.get("cleanup_temp_folder"):
-            try:
-                temp_dir = settings.get("gradio_temp_dir")
-                if temp_dir and os.path.exists(temp_dir): # Check if temp_dir is not None before os.path.exists
-                    print(f"Cleaning up temp folder: {temp_dir}")
-                    items = os.listdir(temp_dir)
-                    removed_count = 0
-                    for item in items:
-                        item_path = os.path.join(temp_dir, item)
-                        try:
-                            if os.path.isfile(item_path) or os.path.islink(item_path):
-                                os.remove(item_path)
-                                removed_count += 1
-                            elif os.path.isdir(item_path):
-                                import shutil # Import shutil here as it's only used in this block
-                                shutil.rmtree(item_path)
-                                removed_count += 1
-                        except Exception as e:
-                            print(f"Error removing {item_path}: {e}")
-                    print(f"Cleaned up {removed_count} temporary files/folders.")
-            except Exception as e:
-                print(f"Error during temp folder cleanup: {e}")
 
         # Check if the user wants to combine the source video with the generated video
         # This is done after the video cleanup routine to ensure the combined video is not deleted

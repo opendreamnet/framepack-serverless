@@ -41,14 +41,26 @@ class Model:
                 return param
 
         if rank <= 0:
-            if torch.cuda.is_available():
-                self.flownet.load_state_dict(convert(torch.load("{}/flownet.pkl".format(path))))
-            else:
-                self.flownet.load_state_dict(convert(torch.load("{}/flownet.pkl".format(path), map_location="cpu")))
+            model_path = "{}/flownet.pkl".format(path)
+            # Check PyTorch version to safely use weights_only
+            from packaging import version
+            use_weights_only = version.parse(torch.__version__) >= version.parse("1.13")
+            
+            load_kwargs = {}
+            if not torch.cuda.is_available():
+                load_kwargs['map_location'] = "cpu"
 
-    def save_model(self, path, rank=0):
-        if rank == 0:
-            torch.save(self.flownet.state_dict(), "{}/flownet.pkl".format(path))
+            if use_weights_only:
+                # For modern PyTorch, be explicit and safe
+                load_kwargs['weights_only'] = True
+                # print(f"PyTorch >= 1.13 detected. Loading RIFE model with weights_only=True.")
+                state_dict = torch.load(model_path, **load_kwargs)
+            else:
+                # For older PyTorch, load the old way
+                print(f"PyTorch < 1.13 detected. Loading RIFE model using legacy method.")
+                state_dict = torch.load(model_path, **load_kwargs)
+            
+            self.flownet.load_state_dict(convert(state_dict))
 
     def inference(self, img0, img1, scale=1.0):
         imgs = torch.cat((img0, img1), 1)

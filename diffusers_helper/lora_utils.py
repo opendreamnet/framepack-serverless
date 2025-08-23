@@ -1,5 +1,5 @@
 from pathlib import Path, PurePath
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Tuple
 from diffusers.loaders.lora_pipeline import _fetch_state_dict
 from diffusers.loaders.lora_conversion_utils import _convert_hunyuan_video_lora_to_diffusers
 from diffusers.utils.peft_utils import set_weights_and_activate_adapters
@@ -8,15 +8,21 @@ import torch
 import time
 import os
 
-def load_lora(transformer, lora_path: Path, weight_name: Optional[str] = "pytorch_lora_weights.safetensors"):
+FALLBACK_CLASS_ALIASES = {
+    "HunyuanVideoTransformer3DModelPacked": "HunyuanVideoTransformer3DModel",
+}
+
+def load_lora(transformer: torch.nn.Module, lora_path: Path, weight_name: str) -> Tuple[torch.nn.Module, str]:
     """
     Load LoRA weights into the transformer model.
 
     Args:
         transformer: The transformer model to which LoRA weights will be applied.
-        lora_path (Path): Path to the LoRA weights file.
-        weight_name (Optional[str]): Name of the weight to load.
+        lora_path: Path to the folder containing the LoRA weights file.
+        weight_name: Filename of the weight to load.
 
+    Returns:
+        A tuple containing the modified transformer and the canonical adapter name.
     """
     
     state_dict = _fetch_state_dict(
@@ -64,11 +70,17 @@ def load_lora(transformer, lora_path: Path, weight_name: Optional[str] = "pytorc
         
     print(f"LoRA weights '{adapter_name}' loaded successfully: {time.perf_counter() - start_time:.2f}s")
     
-    return transformer
+    return transformer, adapter_name
 
-def unload_all_loras(transformer):
+def unload_all_loras(transformer: torch.nn.Module) -> torch.nn.Module:
     """
     Completely unload all LoRA adapters from the transformer model.
+
+    Args:
+        transformer: The transformer model from which LoRA adapters will be removed.
+
+    Returns:
+        The transformer model after all LoRA adapters have been removed.
     """
     if hasattr(transformer, 'peft_config') and transformer.peft_config:
         # Get all adapter names
@@ -109,36 +121,83 @@ def unload_all_loras(transformer):
     
     return transformer
 
-    
-# TODO(neph1): remove when HunyuanVideoTransformer3DModelPacked is in _SET_ADAPTER_SCALE_FN_MAPPING
-def set_adapters(
-        transformer,
-        adapter_names: Union[List[str], str],
-        weights: Optional[Union[float, Dict, List[float], List[Dict], List[None]]] = None,
-    ):
+def resolve_expansion_class_name(
+    transformer: torch.nn.Module, 
+    fallback_aliases: Dict[str, str], 
+    fn_mapping: Dict[str, callable]
+) -> Optional[str]:
+    """
+    Resolves the canonical class name for adapter scale expansion functions,
+    considering potential fallback aliases.
 
+    Args:
+        transformer: The transformer model instance.
+        fallback_aliases: A dictionary mapping model class names to fallback class names.
+        fn_mapping: A dictionary mapping class names to their respective scale expansion functions.
+
+    Returns:
+        The resolved class name as a string if a matching scale function is found,
+        otherwise None.
+    """
+    class_name = transformer.__class__.__name__
+
+    if class_name in fn_mapping:
+        return class_name
+
+    fallback_class = fallback_aliases.get(class_name)
+    if fallback_class in fn_mapping:
+        print(f"Warning: No scale function for '{class_name}'. Falling back to '{fallback_class}'")
+        return fallback_class
+
+    return None
+
+def set_adapters(
+    transformer: torch.nn.Module,
+    adapter_names: Union[List[str], str],
+    weights: Optional[Union[float, List[float]]] = None,
+):
+    """
+    Activates and sets the weights for one or more LoRA adapters on the transformer model.
+
+    Args:
+        transformer: The transformer model to which LoRA adapters are applied.
+        adapter_names: A single adapter name (str) or a list of adapter names (List[str]) to activate.
+        weights: Optional. A single float weight or a list of float weights
+                 corresponding to each adapter name. If None, defaults to 1.0 for each adapter.
+                 If a single float, it will be applied to all adapters.
+    """
     adapter_names = [adapter_names] if isinstance(adapter_names, str) else adapter_names
 
-    # Expand weights into a list, one entry per adapter
-    # examples for e.g. 2 adapters:  [{...}, 7] -> [7,7] ; None -> [None, None]
+    # Expand a single weight to apply to all adapters if needed
     if not isinstance(weights, list):
         weights = [weights] * len(adapter_names)
 
     if len(adapter_names) != len(weights):
         raise ValueError(
-            f"Length of adapter names {len(adapter_names)} is not equal to the length of their weights {len(weights)}."
+            f"The number of adapter names ({len(adapter_names)}) does not match the number of weights ({len(weights)})."
         )
 
-    # Set None values to default of 1.0
-    # e.g. [{...}, 7] -> [{...}, 7] ; [None, None] -> [1.0, 1.0]
-    weights = [w if w is not None else 1.0 for w in weights]
+    # Replace any None weights with a default value of 1.0
+    sanitized_weights = [w if w is not None else 1.0 for w in weights]
 
-    # e.g. [{...}, 7] -> [{expanded dict...}, 7]
-    scale_expansion_fn = _SET_ADAPTER_SCALE_FN_MAPPING["HunyuanVideoTransformer3DModel"]
-    weights = scale_expansion_fn(transformer, weights)
+    resolved_class_name = resolve_expansion_class_name(
+        transformer,
+        fallback_aliases=FALLBACK_CLASS_ALIASES,
+        fn_mapping=_SET_ADAPTER_SCALE_FN_MAPPING
+    )
 
-    set_weights_and_activate_adapters(transformer, adapter_names, weights)
+    transformer_class_name = transformer.__class__.__name__
+
+    if resolved_class_name:
+        scale_expansion_fn = _SET_ADAPTER_SCALE_FN_MAPPING[resolved_class_name]
+        print(f"Using scale expansion function for model class '{resolved_class_name}' (original: '{transformer_class_name}')")
+        final_weights = [
+            scale_expansion_fn(transformer, [weight])[0] for weight in sanitized_weights
+        ]
+    else:
+        print(f"Warning: No scale expansion function found for '{transformer_class_name}'. Using raw weights.")
+        final_weights = sanitized_weights
+
+    set_weights_and_activate_adapters(transformer, adapter_names, final_weights)
     
-    # https://huggingface.co/docs/diffusers/main/en/using-diffusers/merge_loras
-    #lora_scale = float(os.environ.get("APP_EXPERIMENTAL_LORA_SCALE", 1.0))
-    #transformer.fuse_lora(lora_scale=lora_scale, adapter_names=adapter_names)
+    print(f"Adapters {adapter_names} activated with weights {final_weights}.")

@@ -32,6 +32,10 @@ xy_plot_axis_options = {
     "Use teacache": ["dropdown", [True, False], [True, False], False],
     "TeaCache steps": ["number", "int", "5-25 [3]", False],
     "TeaCache rel_l1_thresh": ["number", "float", "0.01-0.3 [3]", False],
+    "Use MagCache": ["dropdown", [True, False], [True, False], False],
+    "MagCache Threshold": ["number", "float", "0.01-1.0 [3]", False],
+    "MagCache Max Consecutive Skips": ["number", "int", "1-5 [3]", False],
+    "MagCache Retention Ratio": ["number", "float", "0.0-1.0 [3]", False],
     # "CFG": ["number", "float", "", False],
     "Distilled CFG Scale": ["number", "float", "5-15 [3]", False],
     # "RS": ["number", "float", "", False],
@@ -50,6 +54,10 @@ text_to_base_keys = {
     "Use teacache": "use_teacache",
     "TeaCache steps":"teacache_num_steps",
     "TeaCache rel_l1_thresh":"teacache_rel_l1_thresh",
+    "Use MagCache": "use_magcache",
+    "MagCache Threshold": "magcache_threshold",
+    "MagCache Max Consecutive Skips": "magcache_max_consecutive_skips",
+    "MagCache Retention Ratio": "magcache_retention_ratio",
     "Latent window size": "latent_window_size",
     # "CFG": "",
     "Distilled CFG Scale": "gs",
@@ -76,7 +84,9 @@ def xy_plot_process(
     end_frame_strength_original, latent_type, 
     prompt, blend_sections, steps, total_second_length, 
     resolutionW, resolutionH, seed, randomize_seed, use_teacache, 
-    teacache_num_steps, teacache_rel_l1_thresh, latent_window_size, 
+    teacache_num_steps, teacache_rel_l1_thresh,
+    use_magcache, magcache_threshold, magcache_max_consecutive_skips, magcache_retention_ratio,
+    latent_window_size, 
     cfg, gs, rs, gpu_memory_preservation, mp4_crf, 
     axis_x_switch, axis_x_value_text, axis_x_value_dropdown, 
     axis_y_switch, axis_y_value_text, axis_y_value_dropdown, 
@@ -133,6 +143,10 @@ def xy_plot_process(
         "use_teacache": use_teacache,
         "teacache_num_steps": teacache_num_steps,
         "teacache_rel_l1_thresh": teacache_rel_l1_thresh,
+        "use_magcache": use_magcache,
+        "magcache_threshold": magcache_threshold,
+        "magcache_max_consecutive_skips": magcache_max_consecutive_skips,
+        "magcache_retention_ratio": magcache_retention_ratio,
         "has_input_image": True if input_image is not None else False,
         "save_metadata_checked": True,
         "blend_sections": blend_sections,
@@ -304,6 +318,16 @@ def create_xy_plot_ui(lora_names, default_prompt, DUMMY_LORA_NAME):
                 xy_plot_use_teacache = gr.Checkbox(label='Use TeaCache', value=True, info='Faster speed, but often makes hands and fingers slightly worse.')
                 xy_plot_teacache_num_steps = gr.Slider(label="TeaCache steps", minimum=1, maximum=50, step=1, value=25, visible=True, info='How many intermediate sections to keep in the cache')
                 xy_plot_teacache_rel_l1_thresh = gr.Slider(label="TeaCache rel_l1_thresh", minimum=0.01, maximum=1.0, step=0.01, value=0.15, visible=True, info='Relative L1 Threshold')
+            with gr.Row("MagCache"):
+                xy_plot_use_magcache = gr.Checkbox(label='Use MagCache', value=False, info='Faster speed, but may introduce artifacts. Uses pre-calibrated ratios.')
+                xy_plot_magcache_threshold = gr.Slider(label="MagCache Threshold", minimum=0.01, maximum=1.0, step=0.01, value=0.1, visible=False, info='Error tolerance for skipping steps. Lower = more skips, higher = fewer skips.')
+                xy_plot_magcache_max_consecutive_skips = gr.Slider(label="MagCache Max Consecutive Skips", minimum=1, maximum=10, step=1, value=2, visible=False, info='Maximum number of consecutive steps that can be skipped.')
+                xy_plot_magcache_retention_ratio = gr.Slider(label="MagCache Retention Ratio", minimum=0.0, maximum=1.0, step=0.01, value=0.25, visible=False, info='Ratio of initial steps to always calculate (not skip).')
+            
+            # Mutual exclusivity logic for TeaCache and MagCache in XY Plot UI
+            xy_plot_use_teacache.change(lambda enabled: (gr.update(visible=enabled), gr.update(visible=enabled), gr.update(value=not enabled)), inputs=xy_plot_use_teacache, outputs=[xy_plot_teacache_num_steps, xy_plot_teacache_rel_l1_thresh, xy_plot_use_magcache])
+            xy_plot_use_magcache.change(lambda enabled: (gr.update(visible=enabled), gr.update(visible=enabled), gr.update(visible=enabled), gr.update(value=not enabled)), inputs=xy_plot_use_magcache, outputs=[xy_plot_magcache_threshold, xy_plot_magcache_max_consecutive_skips, xy_plot_magcache_retention_ratio, xy_plot_use_teacache])
+
             xy_plot_latent_window_size = gr.Slider(label="Latent Window Size", minimum=1, maximum=33, value=9, step=1, visible=True, info='Change at your own risk, very experimental')
             xy_plot_cfg = gr.Slider(label="CFG Scale", minimum=1.0, maximum=32.0, value=1.0, step=0.01, visible=False)
             xy_plot_gs = gr.Slider(label="Distilled CFG Scale", minimum=1.0, maximum=32.0, value=10.0, step=0.01)
@@ -384,6 +408,10 @@ def create_xy_plot_ui(lora_names, default_prompt, DUMMY_LORA_NAME):
         "use_teacache": xy_plot_use_teacache,
         "teacache_num_steps": xy_plot_teacache_num_steps,
         "teacache_rel_l1_thresh": xy_plot_teacache_rel_l1_thresh,
+        "use_magcache": xy_plot_use_magcache,
+        "magcache_threshold": xy_plot_magcache_threshold,
+        "magcache_max_consecutive_skips": xy_plot_magcache_max_consecutive_skips,
+        "magcache_retention_ratio": xy_plot_magcache_retention_ratio,
         "latent_window_size": xy_plot_latent_window_size,
         "cfg": xy_plot_cfg,
         "gs": xy_plot_gs,

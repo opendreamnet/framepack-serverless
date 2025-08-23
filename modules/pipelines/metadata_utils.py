@@ -226,7 +226,12 @@ def create_metadata(job_params, job_id, settings, save_placeholder=False):
         # Tea cache parameters
         "use_teacache": job_params.get('use_teacache', False),
         "teacache_num_steps": job_params.get('teacache_num_steps', 0),
-        "teacache_rel_l1_thresh": job_params.get('teacache_rel_l1_thresh', 0.0)
+        "teacache_rel_l1_thresh": job_params.get('teacache_rel_l1_thresh', 0.0),
+        # MagCache parameters
+        "use_magcache": job_params.get('use_magcache', False),
+        "magcache_threshold": job_params.get('magcache_threshold', 0.1),
+        "magcache_max_consecutive_skips": job_params.get('magcache_max_consecutive_skips', 2),
+        "magcache_retention_ratio": job_params.get('magcache_retention_ratio', 0.25),
     }
     
     # Add LoRA information if present

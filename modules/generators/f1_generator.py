@@ -73,19 +73,24 @@ class F1ModelGenerator(BaseModelGenerator):
             dtype=torch.float32
         ).cpu()
     
-    def initialize_with_start_latent(self, history_latents, start_latent):
+    def initialize_with_start_latent(self, history_latents, start_latent, is_real_image_latent):
         """
         Initialize the history latents with the start latent for the F1 model.
         
         Args:
             history_latents: The history latents
             start_latent: The start latent
+            is_real_image_latent: Whether the start latent came from a real input image or is a synthetic noise
             
         Returns:
             The initialized history latents
         """
         # Add the start frame to history_latents
-        return torch.cat([history_latents, start_latent.to(history_latents)], dim=2)
+        if is_real_image_latent:
+            return torch.cat([history_latents, start_latent.to(history_latents)], dim=2)
+        # After prepare_history_latents, history_latents (initialized with zeros)
+        # already has the required 19 entries for initial clean latents
+        return history_latents
     
     def get_latent_paddings(self, total_latent_sections):
         """

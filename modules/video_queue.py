@@ -507,15 +507,19 @@ class VideoJobQueue:
                         continue
 
                     # Collect all potential video paths from the job parameters
+                    # Check for strings to avoid TypeError
                     paths_to_consider = []
-                    p1 = job.params.get('input_image') # Primary path used by worker
-                    if isinstance(p1, str): paths_to_consider.append(p1)
-                    
-                    p2 = job.params.get('input_image_path') # Secondary/metadata path
-                    if isinstance(p2, str) and p2 != p1: paths_to_consider.append(p2)
+                    p1 = job.params.get("input_image")  # Primary path used by worker
+                    if isinstance(p1, str):
+                        paths_to_consider.append(p1)
 
-                    p3 = job.params.get('input_video') # Explicitly set during import
-                    if isinstance(p3, str) and p3 != p1 and p3 != p2: paths_to_consider.append(p3)
+                    p2 = job.params.get("input_image_path")  # Secondary/metadata path
+                    if isinstance(p2, str) and p2 not in paths_to_consider:
+                        paths_to_consider.append(p2)
+
+                    p3 = job.params.get("input_video")  # Explicitly set during import
+                    if isinstance(p3, str) and p3 not in paths_to_consider:
+                        paths_to_consider.append(p3)
 
                     for rel_or_abs_path in paths_to_consider:
                         # Resolve to absolute path. If already absolute, abspath does nothing.
@@ -1040,6 +1044,10 @@ class VideoJobQueue:
                         'latent_window_size': job_data.get('latent_window_size', 9),
                         'resolutionW': job_data.get('resolutionW', 640),
                         'resolutionH': job_data.get('resolutionH', 640),
+                        'use_magcache': job_data.get('use_magcache', False),
+                        'magcache_threshold': job_data.get('magcache_threshold', 0.1),
+                        'magcache_max_consecutive_skips': job_data.get('magcache_max_consecutive_skips', 2),
+                        'magcache_retention_ratio': job_data.get('magcache_retention_ratio', 0.25),
                         
                         # Initialize image parameters
                         'input_image': None,
