@@ -17,9 +17,13 @@ class JobInputConfig(BaseModel):
     cfg: float = 1.0
     gs: float = 10.0
     rs: int = 0
-    use_teacache: bool = True
+    use_teacache: bool = False
     teacache_num_steps: int = 25
     teacache_rel_l1_thresh: float = 0.15
+    use_magcache: bool = True
+    magcache_threshold: float = 0.1
+    magcache_max_consecutive_skips: int = 2
+    magcache_retention_ratio: float = 0.25
     # Number of sections to blend between prompts
     blend_sections: int = 4
     # Used as a starting point if no image is provided

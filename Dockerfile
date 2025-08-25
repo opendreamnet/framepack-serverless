@@ -1,9 +1,9 @@
 #
 # Base
 #
+# `cudnn-devel` is required to compile `flash-attn` and others.
 FROM nvidia/cuda:12.6.0-cudnn-devel-ubuntu24.04 AS base
 ENV DEBIAN_FRONTEND=noninteractive
-ENV PYTHON_VERSION=3.10
 
 ENV UV_CACHE_DIR=/var/cache/uv
 ENV UV_COMPILE_BYTECODE=1
@@ -18,10 +18,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN update-ca-certificates
 
 # Install UV
-COPY --from=ghcr.io/astral-sh/uv:0.6.17 /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.8.13 /uv /uvx /bin/
 
 # Install Python
-RUN uv python install ${PYTHON_VERSION}
+RUN --mount=type=cache,target=/var/cache/uv \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    --mount=type=bind,source=.python-version,target=.python-version \
+        uv python install
 
 # Project directory
 WORKDIR /app
@@ -39,13 +42,12 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         apt update && apt-get install -y --no-install-recommends \
          build-essential
 
-# Create the virtual environment
-RUN uv venv --relocatable --python ${PYTHON_VERSION}
-
 # Install dependencies
 RUN --mount=type=cache,target=/var/cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    --mount=type=bind,source=.python-version,target=.python-version \
+        uv venv --relocatable && \
         uv sync --extra sage --no-install-project --no-dev
 
 #
@@ -65,6 +67,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1-mesa-dev \
     libglib2.0-0 \
     libmagic1 \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/* && apt-get clean
 
 # Copy the virtual environment from the builder stage
@@ -82,4 +85,4 @@ VOLUME /cache-volume
 EXPOSE 7860
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["uv", "run", "demo_gradio.py"]
+CMD ["uv", "run", "studio.py"]
