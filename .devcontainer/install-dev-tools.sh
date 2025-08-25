@@ -13,13 +13,14 @@ apt-get update
 apt-get install -y \
   libgl1 \
   libglib2.0-0 \
-  libmagic1
+  libmagic1 \
+  ffmpeg
 
 #
 # Python UV
 #
 export UV_INSTALL_DIR="/usr/local/bin"
-curl -LsSf https://astral.sh/uv/0.6.17/install.sh | sh
+curl -LsSf https://astral.sh/uv/0.8.13/install.sh | sh
 
 #
 # Permissions

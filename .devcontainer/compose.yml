@@ -5,6 +5,7 @@ volumes:
 
 services:
   ubuntu:
+    # `cudnn-devel` is required to compile `flash-attn` and others.
     image: nvidia/cuda:12.6.0-cudnn-devel-ubuntu24.04
     environment:
       - HF_HOME=/cache-volume
