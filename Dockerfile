@@ -2,7 +2,7 @@
 # Base
 #
 # `cudnn-devel` is required to compile `flash-attn` and others.
-FROM nvidia/cuda:12.6.0-cudnn-devel-ubuntu24.04 AS base
+FROM nvidia/cuda:12.8.1-cudnn-devel-ubuntu24.04 AS base
 ENV DEBIAN_FRONTEND=noninteractive
 
 ENV UV_CACHE_DIR=/var/cache/uv
