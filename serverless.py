@@ -141,7 +141,7 @@ async def handler(job):
     last_progress_message = None
     current_second = 1
     
-    PROGRESS_UPDATE_RATE = 5
+    PROGRESS_UPDATE_RATE = 10
     
     while True:
         job: Job = job_queue.get_job(job_id)
@@ -175,10 +175,11 @@ async def handler(job):
                     if last_progress_percentage >= 90 and percentage < last_progress_percentage:
                         current_second += 1
                         last_progress_percentage = -99
+                        
+                    last_progress_message = message
                     
-                    if (last_progress_percentage + PROGRESS_UPDATE_RATE) < percentage or last_progress_message != message:
+                    if (last_progress_percentage + PROGRESS_UPDATE_RATE) <= percentage:
                         last_progress_percentage = percentage
-                        last_progress_message = message
                         
                         prev_percentage = 100 * (current_second - 1)
                         total_percentage = round((prev_percentage + percentage) / job_input.config.total_second_length)
