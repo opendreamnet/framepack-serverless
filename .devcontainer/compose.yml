@@ -1,14 +1,19 @@
 name: framepack_devcontainer
 
 volumes:
-  cache_data: null
+  # AI models and UV cache can consume several GB,
+  # this decreases the space used when working on several AI projects.
+  # `docker volume create ai_cache_data`
+  cache_data:
+    name: ai_cache_data
+    external: true
 
 services:
   ubuntu:
     # `cudnn-devel` is required to compile `flash-attn` and others.
     image: nvidia/cuda:12.8.1-cudnn-devel-ubuntu24.04
     environment:
-      - HF_HOME=/cache-volume
+      - HF_HOME=/cache-volume/hf
       - UV_CACHE_DIR=/cache-volume/uv
       - FRAMEPACK_HOME=/cache-volume/framepack
     volumes:
