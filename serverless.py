@@ -143,6 +143,9 @@ async def handler(job):
     
     PROGRESS_UPDATE_RATE = 10
     
+    # Clean the outputs.        
+    cleanup_outputs()
+    
     while True:
         job: Job = job_queue.get_job(job_id)
         
@@ -222,7 +225,7 @@ async def handler(job):
         # Wait a bit before checking again
         time.sleep(0.5)
         
-    # Remove the outputs.        
+    # Clean the outputs.        
     cleanup_outputs()
 
 
