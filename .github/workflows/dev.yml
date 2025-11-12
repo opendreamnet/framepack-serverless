@@ -1,0 +1,29 @@
+name: Development
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+
+on:
+  push:
+    paths:
+      - diffusers_helper/**
+      - local_types/**
+      - modules/**
+      - utils/**
+      - .python-version
+      - Dockerfile
+      - runpod.dockerfile
+      - serverless.py
+      - pyproject.toml
+      - uv.lock
+    branches: [develop]
+  workflow_dispatch:
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+    secrets: inherit
+    with:
+      environment: development
+      runs-on: high-bandwidth
