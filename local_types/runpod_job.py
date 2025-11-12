@@ -37,6 +37,6 @@ class JobInputModel(BaseModel):
     weight: Optional[float] = 1.0
     
 class JobInput(BaseModel):
-    image_url: str
+    image: str
     loras: list[JobInputModel] = Field(default_factory=list)
     config: JobInputConfig

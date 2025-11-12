@@ -5,8 +5,10 @@ import time
 import re
 import numpy as np
 import os
+import io
+from PIL import Image
 from studio import process, job_queue, settings, lora_names
-from utils.image import image_fetch, image_numpy_to_base64
+from utils.image import image_numpy_to_base64
 from utils.args import load_precision
 from utils.uploader import uploader
 from utils.crypto import decrypt, encrypt
@@ -62,7 +64,7 @@ async def handler(job):
     job_input = JobInput.model_validate(job["input"])
     logger.info(f"Received job: {job_input}")
     
-    job_image = image_fetch(decrypt(job_input.image_url).decode())
+    job_image = Image.open(io.BytesIO(decrypt(job_input.image)))
     
     selected_loras: list[str] = []
     lora_values: list[str] = []
