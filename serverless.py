@@ -20,9 +20,20 @@ from modules.lora_manager import lora_manager
 from runpod.serverless.utils.rp_cleanup import clean
     
 def upload_result(filepath: Optional[str], storage_path: str):
-    file_url = uploader.upload_file(filepath, target_path=storage_path)
-    file_url = encrypt(file_url).decode()
-    return file_url
+    with open(filepath, 'r') as f:
+        file_bytes = f.read()
+    
+    file_bytes_encrypted = encrypt(file_bytes)
+    filename = os.path.basename(filepath)
+    
+    presigned_url = uploader.upload_file(
+        file_bytes_encrypted,
+        target_path=storage_path,
+        file_name=f"{filename}.enc",
+        file_mimetype="application/octet-stream"
+    )
+    
+    return presigned_url
 
 def cleanup_outputs():
     outputs_path = settings.get("output_dir")
