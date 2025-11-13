@@ -26,4 +26,5 @@ jobs:
     secrets: inherit
     with:
       environment: development
+      docker-file: ./runpod.dockerfile
       runs-on: high-bandwidth
