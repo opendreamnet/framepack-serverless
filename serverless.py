@@ -20,7 +20,7 @@ from modules.lora_manager import lora_manager
 from runpod.serverless.utils.rp_cleanup import clean
     
 def upload_result(filepath: Optional[str], storage_path: str):
-    with open(filepath, 'r') as f:
+    with open(filepath, 'rb') as f:
         file_bytes = f.read()
     
     file_bytes_encrypted = encrypt(file_bytes)
