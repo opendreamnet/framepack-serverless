@@ -17,10 +17,10 @@ apt-get install -y \
   ffmpeg
 
 #
-# Python UV
+# UV
 #
 export UV_INSTALL_DIR="/usr/local/bin"
-curl -LsSf https://astral.sh/uv/0.8.13/install.sh | sh
+curl -LsSf https://astral.sh/uv/0.11.6/install.sh | sh
 
 #
 # Permissions

@@ -1,4 +1,4 @@
 #
 # Python
 #
-uv sync --extra sage --extra runpod
+uv sync --extra runpod
