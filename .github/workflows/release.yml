@@ -22,9 +22,9 @@ on:
 
 jobs:
   build:
-    uses: ./.github/workflows/build.yml
+    uses: opendreamnet/github-config/.github/workflows/build-docker-image.yml@main
     secrets: inherit
     with:
       environment: production
       docker-file: ./runpod.dockerfile
-      runs-on: high-bandwidth
+      runs-on: '"ubuntu-8cores"'
