@@ -6,8 +6,12 @@ services:
     build:
       context: ../
       dockerfile: runpod.dockerfile
+      args:
+        EXT_PARALLEL: 1
+        MAX_JOBS: 1
+        CMAKE_BUILD_PARALLEL_LEVEL: 1
     volumes:
-      - cache_data:/cache-volume
+      - cache_data:/runpod-volume
     logging:
       driver: "json-file"
       options:
