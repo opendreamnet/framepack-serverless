@@ -24,6 +24,7 @@ dependencies = [
     "opencv-contrib-python>=4.11.0.86",
     "peft>=0.15.2",
     "pillow==11.1.0",
+    "pip>=26.0.1",
     "psutil>=7.0.0",
     "python-dotenv>=1.1.0",
     "python-magic>=0.4.27",
@@ -45,24 +46,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-sage = [
-    "sageattention==1.0.6",
-]
-flash = [
-    "flash-attn>=2.7.4.post1",
-]
-xformers = [
-    "xformers>=0.0.29.post3",
-]
 runpod = [
-    "runpod>=1.7.13",
-]
-
-[tool.uv]
-no-build-isolation-package = [
-    "sageattention",
-    "xformers",
-    "flash-attn",
+    "runpod>=1.9.0",
 ]
 
 [tool.uv.sources]

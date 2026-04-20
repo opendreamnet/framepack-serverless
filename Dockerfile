@@ -1,7 +1,6 @@
 #
 # Base
 #
-# `cudnn-devel` is required to compile `flash-attn` and others.
 FROM nvidia/cuda:12.8.1-cudnn-devel-ubuntu24.04 AS base
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -11,20 +10,20 @@ ENV UV_LINK_MODE=copy
 ENV UV_FROZEN=1
 ENV UV_NO_EDITABLE=1
 
-# Update ca-certificates
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/* && apt-get clean
-RUN update-ca-certificates
-
 # Install UV
-COPY --from=ghcr.io/astral-sh/uv:0.8.13 /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.11.6 /uv /uvx /bin/
 
 # Install Python
-RUN --mount=type=cache,target=/var/cache/uv \
+RUN --mount=type=cache,target=/var/cache/uv,id=uv-cache,sharing=locked \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     --mount=type=bind,source=.python-version,target=.python-version \
         uv python install
+
+# Install base dependencies.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
 
 # Project directory
 WORKDIR /app
@@ -34,32 +33,52 @@ WORKDIR /app
 #
 FROM base AS builder
 
-# Install APT cache and packages
-RUN rm -f /etc/apt/apt.conf.d/docker-clean && \
-    echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked \
-        apt update && apt-get install -y --no-install-recommends \
-         build-essential
-
 # Install dependencies
-RUN --mount=type=cache,target=/var/cache/uv \
+RUN --mount=type=cache,target=/var/cache/uv,id=uv-cache,sharing=locked \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     --mount=type=bind,source=.python-version,target=.python-version \
         uv venv --relocatable && \
-        uv sync --extra sage --no-install-project --no-dev
+        uv sync --extra runpod --no-install-project --no-dev
+
+# Use the virtual environment for all subsequent commands
+ENV PATH="/app/.venv/bin:$PATH"
+
+#
+# SageAttention 2 Builder
+#
+FROM builder AS sageattention_builder
+
+ARG SAGEATTENTION_REF="d1a57a546c3d395b1ffcbeecc66d81db76f3b4b5"
+
+# SageAttention build tuning (optimized defaults for 8 cores / 32 GB RAM)
+ARG EXT_PARALLEL="4"
+ARG MAX_JOBS="4"
+ARG CMAKE_BUILD_PARALLEL_LEVEL="4"
+
+ENV EXT_PARALLEL=${EXT_PARALLEL} \
+    MAX_JOBS=${MAX_JOBS} \
+    CMAKE_BUILD_PARALLEL_LEVEL=${CMAKE_BUILD_PARALLEL_LEVEL}
+
+# 9.0 = H100 (Hopper)
+RUN TORCH_CUDA_ARCH_LIST="9.0+PTX" uv run python -m pip wheel -v --no-build-isolation --wheel-dir /opt/wheelhouse/9.0 \
+    "git+https://github.com/thu-ml/SageAttention.git@${SAGEATTENTION_REF}"
+
+# 12.0 = RTX 5090, RTX PRO 6000
+RUN TORCH_CUDA_ARCH_LIST="12.0" uv run python -m pip wheel -v --no-build-isolation --wheel-dir /opt/wheelhouse/12.0 \
+    "git+https://github.com/thu-ml/SageAttention.git@${SAGEATTENTION_REF}"
 
 #
 # Runtime
 #
-FROM base
+FROM base AS runtime
 
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
-ENV HF_HOME=/cache-volume
+ENV HF_HOME=/cache-volume/hf
+ENV FRAMEPACK_RUNTIME_TARGET=studio
 
-# Install required packages
+# Install dependencies.
 # https://stackoverflow.com/questions/55313610/importerror-libgl-so-1-cannot-open-shared-object-file-no-such-file-or-directo
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
@@ -75,8 +94,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY ./ ./
 COPY --link --from=builder /app/.venv ./.venv
 
-# Place executables in the environment at the front of the path
-ENV PATH="/app/.venv/bin:$PATH"
+# Copy sageattention
+COPY --from=sageattention_builder /opt/wheelhouse /opt/wheelhouse
+
+#
+COPY start.sh ./
+RUN chmod +x /app/start.sh
 
 # Cache for models
 VOLUME /cache-volume
@@ -85,4 +108,6 @@ VOLUME /cache-volume
 EXPOSE 7860
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["uv", "run", "studio.py"]
+CMD ["/app/start.sh"]
+
+# CMD ["uv", "run", "studio.py"]

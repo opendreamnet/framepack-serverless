@@ -1,3 +1,35 @@
+# Byte-compiled files
+__pycache__/
+*.py[cod]
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+pip-log.txt
+*.egg-info/
+dist/
+build/
+.venv/
+
+# Log files
+*.log
+
+# Environment variable files
+.env
+.env.local
+.env.*.local
+
+# runpod files
+.runpod_jobs.*
+
+# Dev folders
+.devcontainer/
+.github/
+.vscode/
+docker/
+
 hf_download/
 .framepack/
 loras/
